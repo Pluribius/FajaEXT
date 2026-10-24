@@ -232,16 +232,20 @@ export const IndustrialHeader = () => {
           }`}
       >
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          {/* Logo FAJAEXT */}
+          {/* Logo FAJAEXT - Compact Pill Background for High Legibility */}
           <Link
             href="/"
             onClick={() => setActiveView('landing')}
-            className="flex items-center gap-2 group cursor-pointer"
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 group cursor-pointer shadow-sm ${
+              scrolled
+                ? 'bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200'
+                : 'bg-black/45 hover:bg-black/60 backdrop-blur-md border border-white/20'
+            }`}
           >
-            <div className="w-8 h-8 rounded bg-[#d9251d] flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
-              <Flame className="w-5 h-5 text-white" />
+            <div className="w-6 h-6 rounded-full bg-[#d9251d] flex items-center justify-center text-white shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+              <Flame className="w-3.5 h-3.5 text-white" />
             </div>
-            <div className={`text-2xl font-black tracking-tight ${scrolled ? 'text-[#0e1b29]' : 'text-white'}`}>
+            <div className={`text-base sm:text-lg font-black tracking-tight ${scrolled ? 'text-[#0e1b29]' : 'text-white'}`}>
               FAJA<span className="text-[#d9251d]">EXT</span>
             </div>
           </Link>
