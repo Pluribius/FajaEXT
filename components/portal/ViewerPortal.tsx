@@ -26,15 +26,16 @@ import { useApp } from '@/components/context/AppContext';
 import { getUserUID } from '@/lib/types';
 import { DocumentImage } from '@/components/ui/DocumentImage';
 import { getOriginalDocumentUrl } from '@/lib/documentUtils';
+import ExcelJS from 'exceljs';
 
 // In-memory cache for images to prevent redundant downloads and speed up rendering
 const imageCache = new Map<string, string>();
 
 /**
  * Helper to fetch, downscale, and cache an image as a Base64 data URI.
- * Essential for standalone Excel embedding and fast PDF/Print rendering.
+ * Essential for ExcelJS embedding and fast PDF/Print rendering.
  */
-async function fetchAndCacheImageAsBase64(url: string, maxWidth = 350, maxHeight = 220): Promise<string> {
+async function fetchAndCacheImageAsBase64(url: string, maxWidth = 300, maxHeight = 180): Promise<string> {
   if (!url) return '';
   if (imageCache.has(url)) {
     console.log(`⚡ [Cache Hit] Using cached image for: ${url.substring(0, 40)}...`);
@@ -56,7 +57,7 @@ async function fetchAndCacheImageAsBase64(url: string, maxWidth = 350, maxHeight
           let width = img.width;
           let height = img.height;
 
-          // Downscale dimensions if they exceed max thresholds
+          // Downscale dimensions if they exceed max thresholds to keep Excel size small
           if (width > maxWidth || height > maxHeight) {
             const ratio = Math.min(maxWidth / width, maxHeight / height);
             width = Math.round(width * ratio);
@@ -117,11 +118,11 @@ export const ViewerPortal = () => {
     showUserStatus: true,
     showUserDate: true,
 
-    // New UID & Typography configuration
+    // UID & Typography configuration
     showUid: true,
-    uidTextSize: 'text-xs',      // 'text-[10px]' | 'text-xs' | 'text-sm'
-    idNumberTextSize: 'text-sm', // 'text-xs' | 'text-sm' | 'text-base' | 'text-lg'
-    nameTextSize: 'text-base',   // 'text-sm' | 'text-base' | 'text-lg' | 'text-xl'
+    uidTextSize: 'text-xs',
+    idNumberTextSize: 'text-sm',
+    nameTextSize: 'text-base',
 
     docWidthPercent: 35,
     reportLayout: 'dossier' as 'dossier' | 'mosaic' | 'table',
@@ -198,70 +199,111 @@ export const ViewerPortal = () => {
     console.log('✅ [Export CSV] Download triggered successfully.');
   };
 
-  // Export to Excel format with embedded standalone downscaled base64 images[cite: 3]
+  // Export to True Excel (.xlsx) using ExcelJS with Native Embedded & Downscaled Images[cite: 3]
   const handleExportExcel = async () => {
     if (isExportingExcel) return;
     setIsExportingExcel(true);
-    console.log(`📊 [Export Excel] Starting standalone Excel export for ${filteredUsers.length} records...`);
+    console.log(`📊 [ExcelJS] Starting native .xlsx export for ${filteredUsers.length} records...`);
 
-    const headers = [
-      'N°',
-      'UID Control',
-      'Nombre Completo',
-      'Cédula',
-      'Documento de Identidad (Cédula Standalone)',
-      'Correo',
-      'Teléfono',
-      'Estado',
-      'Fecha Registro',
-    ];
+    try {
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'FAJA-EXT System';
+      workbook.created = new Date();
 
-    let tableHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
-    tableHtml += '<head><meta charset="utf-8"/></head><body><table border="1">';
-    tableHtml += '<tr style="background:#0e1b29; color:#ffffff; font-weight:bold;">';
-    headers.forEach((h) => {
-      tableHtml += `<th style="padding:8px;">${h}</th>`;
-    });
-    tableHtml += '</tr>';
+      const worksheet = workbook.addWorksheet('Usuarios Autorizados', {
+        views: [{ showGridLines: true }]
+      });
 
-    const excelImgWidth = Math.round(180 * (headerOptions.docWidthPercent / 35));
-    const excelImgHeight = Math.round(110 * (headerOptions.docWidthPercent / 35));
+      // Define Column Layout & Widths
+      worksheet.columns = [
+        { header: 'N°', key: 'index', width: 6 },
+        { header: 'UID Control', key: 'uid', width: 16 },
+        { header: 'Nombre Completo', key: 'fullName', width: 32 },
+        { header: 'Cédula', key: 'idNumber', width: 16 },
+        { header: 'Cédula Digitalizada (Imagen)', key: 'image', width: 26 },
+        { header: 'Correo Electrónico', key: 'email', width: 28 },
+        { header: 'Teléfono', key: 'phone', width: 18 },
+        { header: 'Estatus', key: 'status', width: 14 },
+        { header: 'Fecha Registro', key: 'createdAt', width: 20 },
+      ];
 
-    for (let idx = 0; idx < filteredUsers.length; idx++) {
-      const u = filteredUsers[idx];
-      console.log(`🖼️ [Export Excel] Processing image ${idx + 1} of ${filteredUsers.length} for ${u.fullName}`);
+      // Style Header Row
+      const headerRow = worksheet.getRow(1);
+      headerRow.height = 28;
+      headerRow.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFF' } };
+      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0E1B29' } };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
 
-      const base64Img = await fetchAndCacheImageAsBase64(u.idPhotoUrl, 300, 180);
+      for (let idx = 0; idx < filteredUsers.length; idx++) {
+        const u = filteredUsers[idx];
+        const rowNumber = idx + 2;
+        console.log(`🖼️ [ExcelJS] Processing record ${idx + 1} of ${filteredUsers.length}: ${u.fullName}`);
 
-      tableHtml += `<tr>
-        <td style="text-align:center; vertical-align:middle;">${idx + 1}</td>
-        <td style="font-family:monospace; vertical-align:middle; font-weight:bold; color:#4338ca;">${getUserUID(u)}</td>
-        <td style="vertical-align:middle;"><b>${u.fullName}</b></td>
-        <td style="font-family:monospace; vertical-align:middle;">V-${u.idNumber}</td>
-        <td style="text-align:center; vertical-align:middle; padding:8px;">
-          <img src="${base64Img}" width="${excelImgWidth}" height="${excelImgHeight}" alt="Cédula V-${u.idNumber}" style="border:1px solid #ccc; display:block; margin:auto; object-fit:contain;" />
-        </td>
-        <td style="vertical-align:middle;">${u.email}</td>
-        <td style="vertical-align:middle;">${u.phone}</td>
-        <td style="vertical-align:middle; text-align:center;">${u.status}</td>
-        <td style="vertical-align:middle;">${u.verifiedAt || u.createdAt}</td>
-      </tr>`;
+        // Add row data (leaving image column blank for the image placement)
+        const row = worksheet.addRow({
+          index: idx + 1,
+          uid: getUserUID(u),
+          fullName: u.fullName,
+          idNumber: `V-${u.idNumber}`,
+          image: '',
+          email: u.email,
+          phone: u.phone || 'N/A',
+          status: u.status.toUpperCase(),
+          createdAt: u.verifiedAt || u.createdAt,
+        });
+
+        // Configure row height and vertical alignment
+        row.height = 75; // sufficient height for embedded image
+        row.alignment = { vertical: 'middle', horizontal: 'left' };
+        row.font = { name: 'Arial', size: 10 };
+
+        // Center alignment for specific columns
+        row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
+
+        // Fetch, downscale and embed image natively
+        if (u.idPhotoUrl) {
+          try {
+            const base64DataUri = await fetchAndCacheImageAsBase64(u.idPhotoUrl, 280, 160);
+            const base64Clean = base64DataUri.replace(/^data:image\/\w+;base64,/, '');
+
+            const imageId = workbook.addImage({
+              base64: base64Clean,
+              extension: 'jpeg',
+            });
+
+            // Embed image into Column E (index 4, 0-indexed) at the specific row
+            worksheet.addImage(imageId, {
+              tl: { col: 4, row: idx + 1 }, // Column E, Row index
+              ext: { width: 140, height: 85 } // Display dimensions inside cell
+            });
+          } catch (imgErr) {
+            console.warn(`⚠️ [ExcelJS] Failed to embed image for ${u.fullName}:`, imgErr);
+            row.getCell(5).value = '[Imagen No Disponible]';
+          }
+        }
+      }
+
+      console.log('💾 [ExcelJS] Generating .xlsx binary buffer...');
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Reporte_Usuarios_Nativo_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      console.log('🎉 [ExcelJS] Native Excel export completed successfully!');
+    } catch (error) {
+      console.error('❌ [ExcelJS] Error generating Excel file:', error);
+      alert('Hubo un error al generar el archivo Excel.');
+    } finally {
+      setIsExportingExcel(false);
     }
-
-    tableHtml += '</table></body></html>';
-
-    console.log('💾 [Export Excel] Packaging spreadsheet blob...');
-    const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Reporte_Standalone_FAJAEXT_${new Date().toISOString().split('T')[0]}.xls`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setIsExportingExcel(false);
-    console.log('🎉 [Export Excel] Standalone Excel export completed successfully!');
   };
 
   const handleOpenPrintModal = async () => {
@@ -298,7 +340,7 @@ export const ViewerPortal = () => {
                 Registros de Usuarios Autorizados (Ordenados por Cédula)
               </h1>
               <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-2xl">
-                Como visor, puedes examinar la nómina de usuarios aprobados ordenada de menor a mayor cédula[cite: 3]. Cuentas con herramientas para exportar reportes en formatos CSV y Excel.
+                Como visor, puedes examinar la nómina de usuarios aprobados ordenada de menor a mayor cédula[cite: 3]. Cuentas con herramientas para exportar reportes en formatos CSV y Excel nativo con imágenes incrustadas.
               </p>
             </div>
 
@@ -355,13 +397,14 @@ export const ViewerPortal = () => {
                 onClick={handleExportExcel}
                 disabled={isExportingExcel}
                 className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                title="Generar archivo Excel .xlsx con imágenes incrustadas de forma nativa"
               >
                 {isExportingExcel ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <FileSpreadsheet className="w-4 h-4" />
                 )}
-                <span>{isExportingExcel ? 'Procesando Imágenes...' : 'Exportar Excel (Standalone)'}</span>
+                <span>{isExportingExcel ? 'Procesando Imágenes...' : 'Exportar Excel (.xlsx)'}</span>
               </button>
 
               <button
@@ -492,7 +535,7 @@ export const ViewerPortal = () => {
               </button>
               <span>•</span>
               <button onClick={handleExportExcel} className="text-emerald-700 hover:underline font-bold cursor-pointer">
-                {isExportingExcel ? 'Procesando...' : 'Descargar Excel (Standalone)'}
+                {isExportingExcel ? 'Procesando...' : 'Exportar Excel (.xlsx)'}
               </button>
               <span>•</span>
 
@@ -644,14 +687,13 @@ export const ViewerPortal = () => {
                         </div>
                       </div>
 
-                      {/* NEW SECTION: UID & Typography Controls */}
+                      {/* UID & Typography Controls */}
                       <div className="mb-3 pb-3 border-b border-slate-100 space-y-2.5">
                         <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 uppercase tracking-wide">
                           <Type className="w-3.5 h-3.5 text-indigo-600" />
                           <span>UID y Tamaños de Texto:</span>
                         </div>
 
-                        {/* Show/Hide UID Toggle */}
                         <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
                           <input
                             type="checkbox"
@@ -662,7 +704,6 @@ export const ViewerPortal = () => {
                           <span className="text-slate-700 text-xs font-semibold">Mostrar UID Control</span>
                         </label>
 
-                        {/* UID Text Size */}
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-slate-600 text-[11px]">Tamaño UID:</span>
                           <div className="flex items-center gap-1">
@@ -686,7 +727,6 @@ export const ViewerPortal = () => {
                           </div>
                         </div>
 
-                        {/* ID Number Text Size */}
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-slate-600 text-[11px]">Tamaño Cédula:</span>
                           <div className="flex items-center gap-1">
@@ -711,7 +751,6 @@ export const ViewerPortal = () => {
                           </div>
                         </div>
 
-                        {/* Name Text Size */}
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-slate-600 text-[11px]">Tamaño Nombre:</span>
                           <div className="flex items-center gap-1">

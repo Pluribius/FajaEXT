@@ -2,116 +2,120 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { ShieldCheck, HardHat, Gauge, Droplet, ArrowRight } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ShieldAlert, FileSpreadsheet, Building2, UserCheck } from 'lucide-react';
 import { useApp } from '@/components/context/AppContext';
 
 export const IndustrialProjects = () => {
   const { openAuthModal, currentUser, setActiveView } = useApp();
 
-  const stats = [
-    { label: 'Barriles Diarios Fiscalizados', value: '1.2M+', icon: Droplet },
-    { label: 'Confiabilidad Operacional', value: '99.8%', icon: Gauge },
-    { label: 'Horas Hombre Sin Accidentes', value: '4.5M', icon: HardHat },
-    { label: 'Cumplimiento Normativo ISO', value: '100%', icon: ShieldCheck },
+  const operationalCards = [
+    {
+      title: 'Validación de Cédulas y Nóminas',
+      subtitle: 'Fase de Depuración',
+      desc: 'Cruce sistemático de nóminas históricas de subcontratistas y consorcios operacionales con la base de datos nacional.',
+      image: '/images/platform-oil.jpg',
+      badge: 'Auditoría Activa',
+    },
+    {
+      title: 'Consorcio Petrolero Hamaca',
+      subtitle: 'Bloque Ayacucho & Mejorador',
+      desc: 'Ex-trabajadores de campo, soldadores, operadores de planta y personal técnico bajo contratos directos e indirectos.',
+      image: '/images/campo-petrolero-1068x712.jpg',
+      badge: 'Sincor / Hamaca',
+    },
+    {
+      title: 'Expediente Digital Unificado',
+      subtitle: 'Cédula, RIF, IVSS y Finiquitos',
+      desc: 'Carga de comprobantes digitalizados en alta resolución para sustentar la carpeta individual ante la comisión de enlace PDVSA.',
+      image: '/images/exploracion.jpg',
+      badge: 'Sustento Legal',
+    },
+    {
+      title: 'Transparencia y Consulta Pública',
+      subtitle: 'Portal de Verificación',
+      desc: 'Cada usuario dispone de un código UID único para certificar su estatus de elegibilidad de forma directa y sin intermediarios.',
+      image: '/images/pexels-jan-van-der-wolf-11680885-16091985.jpg',
+      badge: 'Acceso Inmediato',
+    },
   ];
 
   return (
-    <section id="proyectos" className="w-full py-20 bg-white border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-6">
-        
-        {/* Metric Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-8 bg-[#0e1b29] text-white rounded-2xl shadow-xl mb-20 border-b-4 border-[#d9251d]">
-          {stats.map((s, i) => {
-            const Icon = s.icon;
-            return (
-              <div key={i} className="flex flex-col items-center text-center p-2">
-                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-[#d9251d] mb-3">
-                  <Icon className="w-6 h-6" />
-                </div>
-                <div className="text-3xl md:text-4xl font-black text-white tracking-tight">
-                  {s.value}
-                </div>
-                <div className="text-xs text-slate-300 font-medium mt-1 uppercase tracking-wider">
-                  {s.label}
-                </div>
-              </div>
-            );
-          })}
+    <section id="censos" className="w-full py-24 bg-[#c81919] text-white relative overflow-hidden">
+      
+      {/* Background Subtle Wave Texture */}
+      <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
+
+        {/* Top Split Headline (Exact match to Red Section in Reference image) */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8 mb-16">
+          <div className="max-w-xl">
+            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1] uppercase">
+              Transformando el Reclamo en Justicia Concreta
+            </h2>
+          </div>
+
+          <div className="max-w-md">
+            <p className="text-red-100 text-sm sm:text-base leading-relaxed font-normal">
+              Facilitamos el puente técnico y documental para que las transnacionales petroleras liquiden los montos adeudados a través de los canales institucionales de PDVSA, asegurando el beneficio a cada familia trabajadora.
+            </p>
+          </div>
         </div>
 
-        {/* Strategic Infrastructure Showcase */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-6">
-            <span className="text-xs font-black uppercase tracking-widest text-[#d9251d]">
-              Infraestructura y Conectividad
-            </span>
-            <h3 className="text-3xl sm:text-4xl font-black text-[#0e1b29] leading-tight">
-              Desarrollo Integral en los Cuadrantes de la Faja del Orinoco
-            </h3>
-            <p className="text-slate-600 leading-relaxed text-base">
-              Nuestra plataforma coordina estaciones de flujo, oleoductos matrices y complejos de mejoramiento. Mediante el portal PetroLink, clientes y auditores autorizados acceden de forma segura a datos certificados, documentación oficial y soporte directo.
-            </p>
+        {/* 4 Cards Grid - 2x2 layout matching reference image with curved cards and rounded pill buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {operationalCards.map((item, index) => (
+            <div
+              key={index}
+              className="group relative rounded-3xl overflow-hidden aspect-[16/10] sm:aspect-[16/9] bg-slate-900 shadow-2xl border border-white/20 flex flex-col justify-end p-6 sm:p-8 transition-transform duration-500 hover:-translate-y-1.5"
+            >
+              {/* Card Image */}
+              <Image
+                src={item.image}
+                alt={item.title}
+                fill
+                className="object-cover object-center group-hover:scale-105 transition-transform duration-700 opacity-75 group-hover:opacity-90"
+              />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-                <h5 className="font-bold text-sm text-[#0e1b29] mb-1">
-                  Transparencia y Seguridad
-                </h5>
-                <p className="text-xs text-slate-500">
-                  Verificación de documentos de identidad con auditoría humana previa a la habilitación en nómina.
-                </p>
+              {/* Gradient Scrim */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+              {/* Bottom Card Content */}
+              <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+                <div className="space-y-1.5 max-w-sm">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">
+                    {item.badge}
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black text-white leading-tight">
+                    {item.title}
+                  </h3>
+                  <p className="text-slate-300 text-xs sm:text-sm line-clamp-2 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+
+                {/* White / Dark Pill Button like reference "Lihat Detail" */}
+                <button
+                  onClick={() => {
+                    if (currentUser) {
+                      setActiveView('portal');
+                    } else {
+                      openAuthModal('register');
+                    }
+                  }}
+                  className="shrink-0 px-5 py-2 rounded-full bg-white/95 hover:bg-white text-slate-950 font-bold text-xs uppercase tracking-wider shadow-lg transition-all flex items-center gap-1.5 cursor-pointer hover:scale-105"
+                >
+                  <span>Consultar</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-                <h5 className="font-bold text-sm text-[#0e1b29] mb-1">
-                  Portal Multirrol
-                </h5>
-                <p className="text-xs text-slate-500">
-                  Vistas segmentadas y seguras para Clientes, Administradores y Visores externos.
-                </p>
-              </div>
             </div>
-
-            <div className="pt-2">
-              <button
-                onClick={() => {
-                  if (currentUser) {
-                    setActiveView('portal');
-                  } else {
-                    openAuthModal('register');
-                  }
-                }}
-                className="px-6 py-3 bg-[#0e1b29] hover:bg-[#1a2c3f] text-white font-bold text-xs uppercase tracking-wider rounded-md shadow transition-all inline-flex items-center gap-2 cursor-pointer"
-              >
-                <span>{currentUser ? 'Ir al Panel de Control' : 'Registrar Empresa o Contratista'}</span>
-                <ArrowRight className="w-4 h-4 text-[#d9251d]" />
-              </button>
-            </div>
-          </div>
-
-          <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-[16/11] bg-slate-100 border border-slate-200">
-            <Image
-              src="/images/campo-petrolero-1068x712.jpg"
-              alt="Campo Petrolero PetroLink"
-              fill
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute bottom-6 left-6 text-white max-w-sm">
-              <span className="text-[11px] uppercase tracking-wider font-bold text-[#d9251d]">
-                Complejo Operacional
-              </span>
-              <h4 className="text-xl font-black mt-1">
-                Bloque Carabobo y Junín
-              </h4>
-              <p className="text-xs text-slate-300 mt-1">
-                Monitoreo continuo de pozos, separación y despacho automatizado.
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
 
       </div>
     </section>
   );
 };
+

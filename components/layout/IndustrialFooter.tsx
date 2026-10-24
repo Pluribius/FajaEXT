@@ -2,91 +2,120 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Flame, Mail, Phone, MapPin, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Flame, Mail, MapPin, ArrowUpRight, ShieldCheck, FileText } from 'lucide-react';
 import { useApp } from '@/components/context/AppContext';
 
 export const IndustrialFooter = () => {
   const { openAuthModal } = useApp();
 
   return (
-    <footer id="contacto" className="bg-[#08111b] text-slate-400 text-sm border-t-4 border-[#d9251d]">
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+    <footer id="contacto" className="bg-[#00529b] text-white/80 text-xs sm:text-sm">
+      <div className="max-w-7xl mx-auto px-6 pt-16 pb-12">
 
-          {/* Brand and Description */}
+        {/* 4 Columns Row matching bottom blue footer of reference */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/20">
+
+          {/* Logo & Description */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded bg-[#d9251d] flex items-center justify-center text-white">
-                <Flame className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-[#d9251d] shadow-sm">
+                <Flame className="w-5 h-5 text-[#d9251d]" />
               </div>
               <div className="text-2xl font-black tracking-tight text-white">
-                Petro<span className="text-[#d9251d]">Link</span>
+                FAJA<span className="text-red-400">EXT</span>
               </div>
             </div>
 
-            <p className="text-slate-400 text-xs sm:text-sm leading-relaxed max-w-sm">
-              Plataforma unificada para el seguimiento de procesos ACTA CONVENIO para la Faja Petrolífera del Orinoco.
+            <p className="text-white/80 text-xs sm:text-sm leading-relaxed max-w-sm">
+              Programa voluntario de compilación y digitalización documental de ex-trabajadores de la Faja Petrolífera del Orinoco (1990–2010 / Proyecto Hamaca) para la regularización de pasivos laborales ante PDVSA y operadoras internacionales.
             </p>
 
-            <div className="pt-2 text-xs text-slate-500 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>Certificación ISO 9001 / OHSAS 18001 en Seguridad Industrial</span>
+            <div className="pt-2 flex items-center gap-2 text-xs text-white/90">
+              <ShieldCheck className="w-4 h-4 text-emerald-300" />
+              <span>Transparencia Documental y Registro Comprobado</span>
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Column 1: Expediente & Consulta */}
           <div className="space-y-3">
-            <h5 className="text-xs font-bold uppercase tracking-wider text-white">
-              Navegación
+            <h5 className="text-xs font-black uppercase tracking-wider text-white">
+              Censo & Expediente
             </h5>
-            <ul className="space-y-2 text-xs">
+            <ul className="space-y-2 text-xs text-white/75">
               <li>
-                <a href="#hero" className="hover:text-white transition-colors">Inicio</a>
+                <a href="#proceso" className="hover:text-white transition-colors">Proyecto Hamaca</a>
               </li>
               <li>
-                <a href="#nosotros" className="hover:text-white transition-colors">Sobre Nosotros</a>
+                <a href="#censos" className="hover:text-white transition-colors">Requisitos de Inscripción</a>
               </li>
               <li>
-                <a href="#Acta Convenio" className="hover:text-white transition-colors">Acta Convenio</a>
+                <a href="#empresas" className="hover:text-white transition-colors">Consorcios Involucrados</a>
               </li>
               <li>
-                <a href="#Empresas" className="hover:text-white transition-colors">Empresas</a>
-              </li>
-              <li>
-                <a href="#noticias" className="hover:text-white transition-colors">Noticias y Boletines</a>
+                <button onClick={() => openAuthModal('register')} className="hover:text-white transition-colors cursor-pointer text-left">
+                  Crear Registro
+                </button>
               </li>
             </ul>
           </div>
 
-          {/* Contact Details */}
+          {/* Column 2: Marco Institucional */}
           <div className="space-y-3">
-            <h5 className="text-xs font-bold uppercase tracking-wider text-white">
-              Contacto Central
+            <h5 className="text-xs font-black uppercase tracking-wider text-white">
+              Marco de Enlace
             </h5>
-            <div className="space-y-2 text-xs">
+            <ul className="space-y-2 text-xs text-white/75">
+              <li>
+                <span>PDVSA Casa Matriz</span>
+              </li>
+              <li>
+                <span>Decreto de Nacionalización 2007</span>
+              </li>
+              <li>
+                <span>Acta Convenio Colectiva</span>
+              </li>
+              <li>
+                <span>Comisión Técnica de Ex-Trabajadores</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 3: Contacto & Canales */}
+          <div className="space-y-3">
+            <h5 className="text-xs font-black uppercase tracking-wider text-white">
+              Canal Oficial
+            </h5>
+            <div className="space-y-2.5 text-xs text-white/75">
               <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-[#d9251d] shrink-0" />
-                <span>(+58) 212-700-PETRO</span>
+                <Mail className="w-4 h-4 text-red-300 shrink-0" />
+                <a href="mailto:FAJAEXT@GMAIL.COM" className="hover:text-white transition-colors font-medium">
+                  FAJAEXT@GMAIL.COM
+                </a>
               </div>
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-[#d9251d] shrink-0" />
-                <span>contacto@petrolink.com</span>
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-red-300 shrink-0 mt-0.5" />
+                <span>Faja Petrolífera del Orinoco • Venezuela</span>
               </div>
             </div>
           </div>
 
         </div>
 
-        <div className="mt-12 pt-6 border-t border-slate-800 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Bottom Copyright and Legal Links */}
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/60">
           <div>
-            © {new Date().getFullYear()} PetroLink Corp. Todos los derechos reservados.
+            © {new Date().getFullYear()} FAJAEXT • Iniciativa Voluntaria de Justicia Laboral
           </div>
           <div className="flex items-center gap-6">
-            <span className="hover:text-slate-400 cursor-pointer">Términos de Servicio</span>
-            <span className="hover:text-slate-400 cursor-pointer">Política de Privacidad</span>
-            <span className="hover:text-slate-400 cursor-pointer">Seguridad Geoespacial</span>
+            <Link href="/terminos" className="hover:text-white transition-colors">
+              Términos de Consulta
+            </Link>
+            <Link href="/privacidad" className="hover:text-white transition-colors">
+              Protección de Datos Laborales
+            </Link>
           </div>
         </div>
+
       </div>
     </footer>
   );
