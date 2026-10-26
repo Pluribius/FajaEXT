@@ -39,10 +39,10 @@ export const IndustrialHero = () => {
                 textShadow: '0 0 20px rgba(0,0,0,0.7)'
               }}
             >
-              NUESTRA
+              ACTA
             </span>
             <span className="text-white drop-shadow-2xl inline-block">
-              MISIÓN
+              CONVENIO
             </span>
           </h1>
 

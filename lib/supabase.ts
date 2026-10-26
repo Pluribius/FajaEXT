@@ -1,21 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 import { AppUser, SupabaseProfile, profileToAppUser } from './types';
 
-export const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://agxvxlsqhpxblcqiafin.supabase.co';
-export const SUPABASE_PUBLISHABLE_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  'sb_publishable_Y0VotelMZmc3y-jyWnAA5g_87g8iHC6';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+if (!supabaseUrl || !supabasePublishableKey) {
+  throw new Error('❌ Missing Supabase environment variables in lib/supabase.ts');
+}
 
 // Global Supabase client singleton
-export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
   },
 });
-
 /**
  * Fetch all users from Supabase database (users_info joined with contact_info, documents, verification_status, payment_status)
  */
@@ -94,6 +94,7 @@ export async function upsertProfileInSupabase(user: {
   email: string;
   phone?: string;
   idNumber: string;
+  idType?: boolean;
   idPhotoUrl?: string;
   verificationStatus?: string;
   batchId?: string;
@@ -110,6 +111,7 @@ export async function upsertProfileInSupabase(user: {
       last_name: lastName,
       id_number: user.idNumber.replace(/\D/g, ''),
       role: 'user',
+      ID_Type: user.idType !== undefined ? user.idType : true,
     });
 
     // 2. Upsert contact_info
@@ -132,8 +134,8 @@ export async function upsertProfileInSupabase(user: {
       user.verificationStatus === 'aprobado'
         ? 'approved'
         : user.verificationStatus === 'rechazado'
-        ? 'rejected'
-        : 'pending';
+          ? 'rejected'
+          : 'pending';
 
     await supabase.from('verification_status').upsert({
       id: user.id,
@@ -153,6 +155,67 @@ export async function upsertProfileInSupabase(user: {
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error al guardar perfil' };
+  }
+}
+
+/**
+ * Update user general profile info (first/last name, id_number, ID_Type, phone, email, notes, role)
+ */
+export async function updateUserInSupabase(
+  id: string,
+  updates: {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    idNumber?: string;
+    idType?: boolean;
+    role?: string;
+    status?: 'aprobado' | 'pendiente' | 'rechazado';
+    batchId?: string;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (typeof window !== 'undefined') {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id, ...updates }),
+      });
+      if (res.ok) {
+        return { success: true };
+      }
+    }
+
+    // Fallback direct updates if called directly
+    const userInfoUpdates: any = {};
+    if (updates.fullName) {
+      const nameParts = updates.fullName.trim().split(' ');
+      userInfoUpdates.first_name = nameParts[0] || 'Usuario';
+      userInfoUpdates.last_name = nameParts.slice(1).join(' ') || 'Registrado';
+    }
+    if (updates.idNumber) {
+      userInfoUpdates.id_number = updates.idNumber.replace(/\D/g, '');
+    }
+    if (updates.idType !== undefined) {
+      userInfoUpdates.ID_Type = updates.idType;
+    }
+    if (updates.role) {
+      userInfoUpdates.role = updates.role === 'admin' ? 'admin' : updates.role === 'viewer' ? 'viewer' : 'user';
+    }
+    if (Object.keys(userInfoUpdates).length > 0) {
+      await supabase.from('users_info').update(userInfoUpdates).eq('id', id);
+    }
+
+    if (updates.email || updates.phone !== undefined) {
+      const contactUpdates: any = {};
+      if (updates.email) contactUpdates.email = updates.email.trim().toLowerCase();
+      if (updates.phone !== undefined) contactUpdates.phone = updates.phone || null;
+      await supabase.from('contact_info').update(contactUpdates).eq('id', id);
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error actualizando usuario' };
   }
 }
 

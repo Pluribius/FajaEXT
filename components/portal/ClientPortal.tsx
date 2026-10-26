@@ -41,6 +41,7 @@ export const ClientPortal = () => {
     changeEmail,
     changePassword,
     resendConfirmation,
+    updateUser,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'perfil' | 'noticias' | 'soporte'>('perfil');
@@ -72,11 +73,17 @@ export const ClientPortal = () => {
 
   if (!currentUser) return null;
 
+  const idPrefix = currentUser.idType === false || (currentUser as any).ID_Type === false ? 'E' : 'V';
+
   const handleCopyUid = () => {
     const uid = getUserUID(currentUser);
     navigator.clipboard.writeText(uid);
     setCopiedUid(true);
     setTimeout(() => setCopiedUid(false), 2500);
+  };
+
+  const handleIdTypeChange = async (newType: boolean) => {
+    await updateUser(currentUser.id, { idType: newType }); // ✅ Use idType only
   };
 
   const handleResendEmail = async () => {
@@ -185,7 +192,7 @@ export const ClientPortal = () => {
   return (
     <div className="w-full bg-slate-50 min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-6">
-        
+
         {/* Welcome Header */}
         <div className="bg-[#0e1b29] text-white rounded-2xl p-6 sm:p-8 mb-8 shadow-xl border-b-4 border-[#d9251d] relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -259,11 +266,10 @@ export const ClientPortal = () => {
         <div className="flex border-b border-slate-200 mb-8 bg-white rounded-t-xl p-1 shadow-sm">
           <button
             onClick={() => setActiveTab('perfil')}
-            className={`flex-1 py-3 px-4 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${
-              activeTab === 'perfil'
-                ? 'bg-[#0e1b29] text-white shadow-md'
-                : 'text-slate-600 hover:text-[#0e1b29] hover:bg-slate-100'
-            }`}
+            className={`flex-1 py-3 px-4 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'perfil'
+              ? 'bg-[#0e1b29] text-white shadow-md'
+              : 'text-slate-600 hover:text-[#0e1b29] hover:bg-slate-100'
+              }`}
           >
             <User className="w-4 h-4" />
             <span>Mis Datos Personales</span>
@@ -271,11 +277,10 @@ export const ClientPortal = () => {
 
           <button
             onClick={() => setActiveTab('noticias')}
-            className={`flex-1 py-3 px-4 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${
-              activeTab === 'noticias'
-                ? 'bg-[#0e1b29] text-white shadow-md'
-                : 'text-slate-600 hover:text-[#0e1b29] hover:bg-slate-100'
-            }`}
+            className={`flex-1 py-3 px-4 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'noticias'
+              ? 'bg-[#0e1b29] text-white shadow-md'
+              : 'text-slate-600 hover:text-[#0e1b29] hover:bg-slate-100'
+              }`}
           >
             <FileText className="w-4 h-4" />
             <span>Noticias y Comunicados ({news.length})</span>
@@ -283,11 +288,10 @@ export const ClientPortal = () => {
 
           <button
             onClick={() => setActiveTab('soporte')}
-            className={`flex-1 py-3 px-4 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${
-              activeTab === 'soporte'
-                ? 'bg-[#0e1b29] text-white shadow-md'
-                : 'text-slate-600 hover:text-[#0e1b29] hover:bg-slate-100'
-            }`}
+            className={`flex-1 py-3 px-4 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'soporte'
+              ? 'bg-[#0e1b29] text-white shadow-md'
+              : 'text-slate-600 hover:text-[#0e1b29] hover:bg-slate-100'
+              }`}
           >
             <MessageSquare className="w-4 h-4" />
             <span>Tickets de Soporte ({myTickets.length})</span>
@@ -297,7 +301,7 @@ export const ClientPortal = () => {
         {/* TAB 1: PERSONAL DATA & ID PHOTO */}
         {activeTab === 'perfil' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
+
             {/* Left: Formatted Personal Details */}
             <div className="lg:col-span-7 bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -331,12 +335,23 @@ export const ClientPortal = () => {
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                    <CreditCard className="w-3.5 h-3.5 text-[#d9251d]" />
-                    Cédula / Documento de Identidad
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-[#d9251d]" />
+                      Tipo y Cédula de Identidad
+                    </span>
+                    <select
+                      value={idPrefix}
+                      onChange={(e) => handleIdTypeChange(e.target.value === 'V')}
+                      className="px-2 py-0.5 bg-white border border-slate-300 rounded text-xs font-bold text-indigo-700 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#d9251d]"
+                      title="Cambiar tipo de ID (V / E)"
+                    >
+                      <option value="V">V (Venezolano)</option>
+                      <option value="E">E (Extranjero)</option>
+                    </select>
                   </div>
-                  <div className="text-sm font-mono font-black text-slate-900">
-                    V-{currentUser.idNumber}
+                  <div className="text-sm font-mono font-black text-slate-900 mt-1">
+                    {idPrefix}-{currentUser.idNumber}
                   </div>
                 </div>
 
@@ -408,7 +423,7 @@ export const ClientPortal = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Número cotejado:</span>
-                  <span className="font-mono font-semibold text-slate-800">{currentUser.idNumber}</span>
+                  <span className="font-mono font-semibold text-slate-800">{idPrefix}-{currentUser.idNumber}</span>
                 </div>
               </div>
             </div>
@@ -449,7 +464,7 @@ export const ClientPortal = () => {
 
             {/* Account Security & Access Settings */}
             <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-8">
-              
+
               {/* Card 1: Change Email & Resend Verification */}
               <div className="bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-5">
                 <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
@@ -475,11 +490,10 @@ export const ClientPortal = () => {
                       type="button"
                       onClick={handleResendEmail}
                       disabled={isSubmittingEmail || resendCooldown > 0}
-                      className={`text-xs font-bold flex items-center gap-1.5 px-2.5 py-1 rounded transition-colors ${
-                        resendCooldown > 0
-                          ? 'text-slate-400 bg-slate-200 cursor-not-allowed'
-                          : 'text-[#d9251d] hover:bg-red-50 bg-white border border-red-200'
-                      }`}
+                      className={`text-xs font-bold flex items-center gap-1.5 px-2.5 py-1 rounded transition-colors ${resendCooldown > 0
+                        ? 'text-slate-400 bg-slate-200 cursor-not-allowed'
+                        : 'text-[#d9251d] hover:bg-red-50 bg-white border border-red-200'
+                        }`}
                     >
                       <RefreshCw className={`w-3 h-3 ${isSubmittingEmail ? 'animate-spin' : ''}`} />
                       <span>{resendCooldown > 0 ? `Reenviar (${resendCooldown}s)` : 'Reenviar Verificación'}</span>
@@ -492,11 +506,10 @@ export const ClientPortal = () => {
 
                 {emailMsg && (
                   <div
-                    className={`p-3 rounded-lg text-xs flex items-center gap-2 border ${
-                      emailMsg.success
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        : 'bg-red-50 border-red-200 text-red-800'
-                    }`}
+                    className={`p-3 rounded-lg text-xs flex items-center gap-2 border ${emailMsg.success
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-red-50 border-red-200 text-red-800'
+                      }`}
                   >
                     {emailMsg.success ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -608,11 +621,10 @@ export const ClientPortal = () => {
 
                   {passwordMsg && (
                     <div
-                      className={`p-3 rounded-lg text-xs flex items-center gap-2 border ${
-                        passwordMsg.success
-                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                          : 'bg-red-50 border-red-200 text-red-800'
-                      }`}
+                      className={`p-3 rounded-lg text-xs flex items-center gap-2 border ${passwordMsg.success
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                        : 'bg-red-50 border-red-200 text-red-800'
+                        }`}
                     >
                       {passwordMsg.success ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -753,13 +765,12 @@ export const ClientPortal = () => {
                           {ticket.category}
                         </span>
                         <span
-                          className={`text-[11px] font-bold px-2.5 py-1 rounded ${
-                            ticket.status === 'Resuelto'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : ticket.status === 'En Proceso'
+                          className={`text-[11px] font-bold px-2.5 py-1 rounded ${ticket.status === 'Resuelto'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : ticket.status === 'En Proceso'
                               ? 'bg-amber-100 text-amber-800'
                               : 'bg-red-100 text-red-800'
-                          }`}
+                            }`}
                         >
                           {ticket.status}
                         </span>

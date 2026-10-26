@@ -23,7 +23,7 @@ import {
   Type,
 } from 'lucide-react';
 import { useApp } from '@/components/context/AppContext';
-import { getUserUID } from '@/lib/types';
+import { getUserUID, formatIdNumber } from '@/lib/types';
 import { DocumentImage } from '@/components/ui/DocumentImage';
 import { getOriginalDocumentUrl } from '@/lib/documentUtils';
 import ExcelJS from 'exceljs';
@@ -98,6 +98,7 @@ export const ViewerPortal = () => {
     url: string;
     fullName: string;
     idNumber: string;
+    idType?: boolean;
     uid: string;
   } | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -139,10 +140,12 @@ export const ViewerPortal = () => {
   const filteredUsers = baseUsers.filter((u) => {
     const q = searchQuery.toLowerCase();
     const uid = getUserUID(u).toLowerCase();
+    const formattedId = formatIdNumber(u).toLowerCase();
     return (
       u.fullName.toLowerCase().includes(q) ||
       u.email.toLowerCase().includes(q) ||
       u.idNumber.includes(q) ||
+      formattedId.includes(q) ||
       u.phone.includes(q) ||
       uid.includes(q)
     );
@@ -177,7 +180,7 @@ export const ViewerPortal = () => {
         `"${idx + 1}"`,
         `"${getUserUID(u)}"`,
         `"${u.fullName}"`,
-        `"V-${u.idNumber}"`,
+        `"${formatIdNumber(u)}"`,
         `"${docUrl}"`,
         `"${u.email}"`,
         `"${u.phone}"`,
@@ -244,7 +247,7 @@ export const ViewerPortal = () => {
           index: idx + 1,
           uid: getUserUID(u),
           fullName: u.fullName,
-          idNumber: `V-${u.idNumber}`,
+          idNumber: formatIdNumber(u),
           image: '',
           email: u.email,
           phone: u.phone || 'N/A',
@@ -347,7 +350,7 @@ export const ViewerPortal = () => {
             {/* Quick Export Action Buttons */}
             <div className="flex flex-wrap items-center gap-2.5">
               {currentUser?.role === 'admin' && (
-                <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-lg border border-slate-700 text-xs mr-2">
+                <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-lg border border-slate-700 text-xs mr-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">
                     Alcance:
                   </span>
@@ -375,6 +378,20 @@ export const ViewerPortal = () => {
               )}
 
               <button
+                type="button"
+                onClick={() => setIsOptionsOpen((prev) => !prev)}
+                className={`px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2 cursor-pointer shadow ${isOptionsOpen
+                  ? 'bg-indigo-500 border-indigo-400 text-white ring-2 ring-indigo-300'
+                  : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
+                  }`}
+                title="Configurar opciones avanzadas y diseño del reporte a imprimir"
+              >
+                <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
+                <span>Configurar Reporte</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOptionsOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <button
                 onClick={async () => {
                   setHeaderOptions((p) => ({ ...p, reportLayout: 'mosaic' }));
                   await handleOpenPrintModal();
@@ -382,7 +399,7 @@ export const ViewerPortal = () => {
                 className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-lg shadow transition-all flex items-center gap-2 cursor-pointer"
               >
                 <LayoutGrid className="w-4 h-4" />
-                <span>Exportar Mosaico (PDF)</span>
+                <span>Mosaico (PDF)</span>
               </button>
 
               <button
@@ -390,7 +407,7 @@ export const ViewerPortal = () => {
                 className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow transition-all flex items-center gap-2 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
-                <span>Exportar CSV</span>
+                <span>CSV</span>
               </button>
 
               <button
@@ -404,24 +421,420 @@ export const ViewerPortal = () => {
                 ) : (
                   <FileSpreadsheet className="w-4 h-4" />
                 )}
-                <span>{isExportingExcel ? 'Procesando Imágenes...' : 'Exportar Excel (.xlsx)'}</span>
+                <span>{isExportingExcel ? 'Procesando...' : 'Excel (.xlsx)'}</span>
               </button>
 
               <button
                 onClick={handleOpenPrintModal}
-                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow transition-all flex items-center gap-2 cursor-pointer"
+                className="px-4 py-2.5 bg-[#d9251d] hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow transition-all flex items-center gap-2 cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
-                <span>Reporte</span>
+                <span>Imprimir / PDF</span>
               </button>
             </div>
           </div>
         </div>
 
+        {/* Top Report Controls Grid Panel (Collapsible / Expandable) */}
+        {isOptionsOpen && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-lg p-6 mb-8 transition-all animate-in fade-in slide-in-from-top-4 duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-700">
+                  <Settings2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm uppercase tracking-wide text-slate-900">
+                    Panel de Configuración de Reporte
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Ajusta el formato visual, escala de cédulas, fuentes y campos visibles para el documento impreso o exportado.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setHeaderOptions({
+                    showLogo: true,
+                    showTitle: true,
+                    showSubtitle: true,
+                    showDate: true,
+                    showAuditor: true,
+                    showReference: true,
+                    showDocPhoto: true,
+                    showUserEmail: true,
+                    showUserPhone: true,
+                    showUserStatus: true,
+                    showUserDate: true,
+                    showUid: true,
+                    uidTextSize: 'text-xs',
+                    idNumberTextSize: 'text-sm',
+                    nameTextSize: 'text-base',
+                    docWidthPercent: 35,
+                    reportLayout: 'dossier',
+                  })}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Restablecer predeterminados
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleOpenPrintModal();
+                  }}
+                  className="px-4 py-1.5 bg-[#0e1b29] hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Previsualizar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsOptionsOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                  title="Cerrar panel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Symmetrical 4-Column Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+              {/* Column 1: Layout Mode */}
+              <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-200 flex flex-col justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider block mb-3 flex items-center gap-1.5">
+                    <LayoutList className="w-3.5 h-3.5 text-indigo-600" />
+                    1. Formato de Reporte
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setHeaderOptions((p) => ({ ...p, reportLayout: 'dossier' }))}
+                      className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg font-bold border transition-all cursor-pointer ${headerOptions.reportLayout === 'dossier'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
+                    >
+                      <LayoutList className="w-5 h-5" />
+                      <span className="text-xs">Fichas</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setHeaderOptions((p) => ({ ...p, reportLayout: 'mosaic' }))}
+                      className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg font-bold border transition-all cursor-pointer ${headerOptions.reportLayout === 'mosaic'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
+                    >
+                      <LayoutGrid className="w-5 h-5" />
+                      <span className="text-xs">Mosaico</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setHeaderOptions((p) => ({ ...p, reportLayout: 'table' }))}
+                      className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg font-bold border transition-all cursor-pointer ${headerOptions.reportLayout === 'table'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
+                    >
+                      <TableIcon className="w-5 h-5" />
+                      <span className="text-xs">Tabla</span>
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500 mt-3 pt-3 border-t border-slate-200/60">
+                  {headerOptions.reportLayout === 'dossier' && 'Diseño extendido tipo expediente con cédula y ficha completa.'}
+                  {headerOptions.reportLayout === 'mosaic' && 'Rejilla compacta de carnets optimizada para impresión de mosaicos.'}
+                  {headerOptions.reportLayout === 'table' && 'Tabla tabular de auditoría estándar con todos los datos.'}
+                </p>
+              </div>
+
+              {/* Column 2: Document Scale & Width */}
+              <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-200 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <ZoomIn className="w-3.5 h-3.5 text-indigo-600" />
+                      2. Ancho Cédula
+                    </span>
+                    <span className="text-xs font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                      {headerOptions.docWidthPercent}%
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setHeaderOptions((p) => ({ ...p, docWidthPercent: Math.max(10, p.docWidthPercent - 5) }))}
+                      className="p-1.5 rounded bg-white hover:bg-slate-200 border border-slate-300 text-slate-700 cursor-pointer shadow-xs"
+                      title="Reducir 5%"
+                    >
+                      <ZoomOut className="w-4 h-4" />
+                    </button>
+
+                    <input
+                      type="range"
+                      min="10"
+                      max="85"
+                      step="1"
+                      value={headerOptions.docWidthPercent}
+                      onChange={(e) => setHeaderOptions({ ...headerOptions, docWidthPercent: Number(e.target.value) })}
+                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setHeaderOptions((p) => ({ ...p, docWidthPercent: Math.min(85, p.docWidthPercent + 5) }))}
+                      className="p-1.5 rounded bg-white hover:bg-slate-200 border border-slate-300 text-slate-700 cursor-pointer shadow-xs"
+                      title="Aumentar 5%"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-6 gap-1 text-[10px]">
+                    {[
+                      { label: '15%', val: 15 },
+                      { label: '25%', val: 25 },
+                      { label: '35%', val: 35 },
+                      { label: '50%', val: 50 },
+                      { label: '65%', val: 65 },
+                      { label: '80%', val: 80 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.val}
+                        type="button"
+                        onClick={() => setHeaderOptions((p) => ({ ...p, docWidthPercent: preset.val }))}
+                        className={`py-1 rounded font-bold border transition-colors cursor-pointer text-center ${headerOptions.docWidthPercent === preset.val
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-lg border border-slate-200/80 mt-3">
+                  <input
+                    type="checkbox"
+                    checked={headerOptions.showDocPhoto}
+                    onChange={(e) => setHeaderOptions({ ...headerOptions, showDocPhoto: e.target.checked })}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                  />
+                  <span className="text-slate-800 text-xs font-bold">Mostrar Foto Cédula</span>
+                </label>
+              </div>
+
+              {/* Column 3: UID & Typography */}
+              <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-200 flex flex-col justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider block mb-3 flex items-center gap-1.5">
+                    <Type className="w-3.5 h-3.5 text-indigo-600" />
+                    3. UID y Tipografía
+                  </span>
+
+                  <label className="flex items-center gap-2 cursor-pointer hover:bg-white p-1.5 rounded-lg border border-slate-200/80 mb-2.5">
+                    <input
+                      type="checkbox"
+                      checked={headerOptions.showUid}
+                      onChange={(e) => setHeaderOptions({ ...headerOptions, showUid: e.target.checked })}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                    />
+                    <span className="text-slate-800 text-xs font-bold">Imprimir Código UID</span>
+                  </label>
+
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600 text-[11px] font-semibold">Fuente UID:</span>
+                      <div className="flex items-center gap-1">
+                        {[
+                          { label: 'S', val: 'text-[10px]' },
+                          { label: 'M', val: 'text-xs' },
+                          { label: 'L', val: 'text-sm' },
+                        ].map((sz) => (
+                          <button
+                            key={sz.val}
+                            type="button"
+                            onClick={() => setHeaderOptions({ ...headerOptions, uidTextSize: sz.val })}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded border cursor-pointer ${headerOptions.uidTextSize === sz.val
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
+                              }`}
+                          >
+                            {sz.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600 text-[11px] font-semibold">Cédula:</span>
+                      <div className="flex items-center gap-1">
+                        {[
+                          { label: 'XS', val: 'text-xs' },
+                          { label: 'S', val: 'text-sm' },
+                          { label: 'M', val: 'text-base' },
+                          { label: 'L', val: 'text-lg' },
+                        ].map((sz) => (
+                          <button
+                            key={sz.val}
+                            type="button"
+                            onClick={() => setHeaderOptions({ ...headerOptions, idNumberTextSize: sz.val })}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded border cursor-pointer ${headerOptions.idNumberTextSize === sz.val
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
+                              }`}
+                          >
+                            {sz.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600 text-[11px] font-semibold">Nombre:</span>
+                      <div className="flex items-center gap-1">
+                        {[
+                          { label: 'S', val: 'text-sm' },
+                          { label: 'M', val: 'text-base' },
+                          { label: 'L', val: 'text-lg' },
+                          { label: 'XL', val: 'text-xl' },
+                        ].map((sz) => (
+                          <button
+                            key={sz.val}
+                            type="button"
+                            onClick={() => setHeaderOptions({ ...headerOptions, nameTextSize: sz.val })}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded border cursor-pointer ${headerOptions.nameTextSize === sz.val
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
+                              }`}
+                          >
+                            {sz.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-slate-500 pt-2 border-t border-slate-200/60 mt-2">
+                  Alineación y legibilidad sincronizada para hojas tamaño Carta y Oficio.
+                </div>
+              </div>
+
+              {/* Column 4: Visible Fields & Header Elements */}
+              <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-200 flex flex-col justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider block mb-3 flex items-center gap-1.5">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
+                    4. Campos y Encabezado
+                  </span>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <label className="flex items-center gap-1.5 cursor-pointer hover:bg-white p-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={headerOptions.showUserEmail}
+                        onChange={(e) => setHeaderOptions({ ...headerOptions, showUserEmail: e.target.checked })}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                      />
+                      <span className="text-slate-700 text-[11px]">Correo</span>
+                    </label>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer hover:bg-white p-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={headerOptions.showUserPhone}
+                        onChange={(e) => setHeaderOptions({ ...headerOptions, showUserPhone: e.target.checked })}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                      />
+                      <span className="text-slate-700 text-[11px]">Teléfono</span>
+                    </label>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer hover:bg-white p-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={headerOptions.showUserDate}
+                        onChange={(e) => setHeaderOptions({ ...headerOptions, showUserDate: e.target.checked })}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                      />
+                      <span className="text-slate-700 text-[11px]">Fecha Reg.</span>
+                    </label>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer hover:bg-white p-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={headerOptions.showUserStatus}
+                        onChange={(e) => setHeaderOptions({ ...headerOptions, showUserStatus: e.target.checked })}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                      />
+                      <span className="text-slate-700 text-[11px]">Estatus</span>
+                    </label>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer hover:bg-white p-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={headerOptions.showLogo}
+                        onChange={(e) => setHeaderOptions({ ...headerOptions, showLogo: e.target.checked })}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                      />
+                      <span className="text-slate-700 text-[11px]">Logo FAJA</span>
+                    </label>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer hover:bg-white p-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={headerOptions.showAuditor}
+                        onChange={(e) => setHeaderOptions({ ...headerOptions, showAuditor: e.target.checked })}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                      />
+                      <span className="text-slate-700 text-[11px]">Auditor</span>
+                    </label>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer hover:bg-white p-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={headerOptions.showTitle}
+                        onChange={(e) => setHeaderOptions({ ...headerOptions, showTitle: e.target.checked })}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                      />
+                      <span className="text-slate-700 text-[11px]">Título</span>
+                    </label>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer hover:bg-white p-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={headerOptions.showDate}
+                        onChange={(e) => setHeaderOptions({ ...headerOptions, showDate: e.target.checked })}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                      />
+                      <span className="text-slate-700 text-[11px]">Fecha Doc.</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-slate-500 pt-2 border-t border-slate-200/60 mt-2">
+                  Visibilidad personalizada activa para exportación.
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
         {/* Main Data Container */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
 
-          {/* Search bar */}
+          {/* Search and Filter Bar */}
           <div className="p-5 border-b border-slate-200 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="relative w-full sm:w-96">
               <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
@@ -466,7 +879,7 @@ export const ViewerPortal = () => {
                         {user.fullName}
                       </td>
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
-                        V-{user.idNumber}
+                        {formatIdNumber(user)}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <button
@@ -475,6 +888,7 @@ export const ViewerPortal = () => {
                             url: user.idPhotoUrl,
                             fullName: user.fullName,
                             idNumber: user.idNumber,
+                            idType: user.idType,
                             uid,
                           })}
                           className="group relative inline-block w-24 h-16 rounded-lg overflow-hidden border-2 border-slate-200 hover:border-indigo-500 shadow-xs hover:shadow-md transition-all bg-slate-100 cursor-pointer focus:outline-none"
@@ -538,407 +952,20 @@ export const ViewerPortal = () => {
                 {isExportingExcel ? 'Procesando...' : 'Exportar Excel (.xlsx)'}
               </button>
               <span>•</span>
-
-              {/* Report Header Options Toggle Button & Popover */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsOptionsOpen((prev) => !prev)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${isOptionsOpen
-                    ? 'bg-indigo-50 border-indigo-400 text-indigo-700 shadow-sm'
-                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900 shadow-xs'
-                    }`}
-                  title="Configurar diseño y elementos del reporte impreso"
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Opciones del Reporte</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${isOptionsOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Popover */}
-                {isOptionsOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setIsOptionsOpen(false)}
-                    />
-                    <div className="absolute right-0 bottom-full mb-2 z-50 w-96 max-h-[85vh] overflow-y-auto bg-white rounded-xl shadow-2xl border border-slate-200 p-4 text-slate-800 animate-in fade-in duration-150">
-                      <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-3">
-                        <div className="flex items-center gap-2">
-                          <Settings2 className="w-4 h-4 text-indigo-600" />
-                          <h4 className="font-extrabold text-xs uppercase tracking-wide text-slate-800">
-                            Diseño y Opciones del Reporte
-                          </h4>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setIsOptionsOpen(false)}
-                          className="text-slate-400 hover:text-slate-600 cursor-pointer"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      {/* Layout Mode Selector */}
-                      <div className="mb-3 pb-3 border-b border-slate-100">
-                        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wide block mb-1.5">
-                          Formato de Impresión:
-                        </span>
-                        <div className="grid grid-cols-3 gap-1.5 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => setHeaderOptions((p) => ({ ...p, reportLayout: 'dossier' }))}
-                            className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg font-bold border transition-all cursor-pointer ${headerOptions.reportLayout === 'dossier'
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                              }`}
-                          >
-                            <LayoutList className="w-4 h-4" />
-                            <span className="text-[11px]">Fichas</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setHeaderOptions((p) => ({ ...p, reportLayout: 'mosaic' }))}
-                            className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg font-bold border transition-all cursor-pointer ${headerOptions.reportLayout === 'mosaic'
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                              }`}
-                          >
-                            <LayoutGrid className="w-4 h-4" />
-                            <span className="text-[11px]">Mosaico</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setHeaderOptions((p) => ({ ...p, reportLayout: 'table' }))}
-                            className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg font-bold border transition-all cursor-pointer ${headerOptions.reportLayout === 'table'
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                              }`}
-                          >
-                            <TableIcon className="w-4 h-4" />
-                            <span className="text-[11px]">Tabla</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Scale / Horizontal Width Slider */}
-                      <div className="mb-3 pb-3 border-b border-slate-100 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
-                            <ZoomIn className="w-3.5 h-3.5 text-indigo-600" />
-                            Ancho Cédula:
-                          </span>
-                          <span className="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                            {headerOptions.docWidthPercent}%
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setHeaderOptions((p) => ({ ...p, docWidthPercent: Math.max(10, p.docWidthPercent - 5) }))}
-                            className="p-1 rounded bg-white hover:bg-slate-200 border border-slate-300 text-slate-700 cursor-pointer"
-                          >
-                            <ZoomOut className="w-3.5 h-3.5" />
-                          </button>
-
-                          <input
-                            type="range"
-                            min="10"
-                            max="85"
-                            step="1"
-                            value={headerOptions.docWidthPercent}
-                            onChange={(e) => setHeaderOptions({ ...headerOptions, docWidthPercent: Number(e.target.value) })}
-                            className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() => setHeaderOptions((p) => ({ ...p, docWidthPercent: Math.min(85, p.docWidthPercent + 5) }))}
-                            className="p-1 rounded bg-white hover:bg-slate-200 border border-slate-300 text-slate-700 cursor-pointer"
-                          >
-                            <ZoomIn className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-6 gap-1 mt-2 text-[10px]">
-                          {[
-                            { label: '15%', val: 15 },
-                            { label: '25%', val: 25 },
-                            { label: '35%', val: 35 },
-                            { label: '50%', val: 50 },
-                            { label: '65%', val: 65 },
-                            { label: '80%', val: 80 },
-                          ].map((preset) => (
-                            <button
-                              key={preset.val}
-                              type="button"
-                              onClick={() => setHeaderOptions((p) => ({ ...p, docWidthPercent: preset.val }))}
-                              className={`py-1 rounded font-bold border transition-colors cursor-pointer text-center ${headerOptions.docWidthPercent === preset.val
-                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                                }`}
-                            >
-                              {preset.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* UID & Typography Controls */}
-                      <div className="mb-3 pb-3 border-b border-slate-100 space-y-2.5">
-                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 uppercase tracking-wide">
-                          <Type className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>UID y Tamaños de Texto:</span>
-                        </div>
-
-                        <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                          <input
-                            type="checkbox"
-                            checked={headerOptions.showUid}
-                            onChange={(e) => setHeaderOptions({ ...headerOptions, showUid: e.target.checked })}
-                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                          />
-                          <span className="text-slate-700 text-xs font-semibold">Mostrar UID Control</span>
-                        </label>
-
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-600 text-[11px]">Tamaño UID:</span>
-                          <div className="flex items-center gap-1">
-                            {[
-                              { label: 'Pequeño', val: 'text-[10px]' },
-                              { label: 'Mediano', val: 'text-xs' },
-                              { label: 'Grande', val: 'text-sm' },
-                            ].map((sz) => (
-                              <button
-                                key={sz.val}
-                                type="button"
-                                onClick={() => setHeaderOptions({ ...headerOptions, uidTextSize: sz.val })}
-                                className={`px-2 py-0.5 text-[10px] font-bold rounded border cursor-pointer ${headerOptions.uidTextSize === sz.val
-                                  ? 'bg-indigo-600 text-white border-indigo-600'
-                                  : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
-                                  }`}
-                              >
-                                {sz.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-600 text-[11px]">Tamaño Cédula:</span>
-                          <div className="flex items-center gap-1">
-                            {[
-                              { label: 'xs', val: 'text-xs' },
-                              { label: 'sm', val: 'text-sm' },
-                              { label: 'md', val: 'text-base' },
-                              { label: 'lg', val: 'text-lg' },
-                            ].map((sz) => (
-                              <button
-                                key={sz.val}
-                                type="button"
-                                onClick={() => setHeaderOptions({ ...headerOptions, idNumberTextSize: sz.val })}
-                                className={`px-2 py-0.5 text-[10px] font-bold rounded border cursor-pointer ${headerOptions.idNumberTextSize === sz.val
-                                  ? 'bg-indigo-600 text-white border-indigo-600'
-                                  : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
-                                  }`}
-                              >
-                                {sz.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-600 text-[11px]">Tamaño Nombre:</span>
-                          <div className="flex items-center gap-1">
-                            {[
-                              { label: 'sm', val: 'text-sm' },
-                              { label: 'md', val: 'text-base' },
-                              { label: 'lg', val: 'text-lg' },
-                              { label: 'xl', val: 'text-xl' },
-                            ].map((sz) => (
-                              <button
-                                key={sz.val}
-                                type="button"
-                                onClick={() => setHeaderOptions({ ...headerOptions, nameTextSize: sz.val })}
-                                className={`px-2 py-0.5 text-[10px] font-bold rounded border cursor-pointer ${headerOptions.nameTextSize === sz.val
-                                  ? 'bg-indigo-600 text-white border-indigo-600'
-                                  : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
-                                  }`}
-                              >
-                                {sz.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Worker Information Toggle Checkboxes */}
-                      <div className="mb-3 pb-3 border-b border-slate-100">
-                        <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-2">
-                          Datos del Trabajador a Imprimir:
-                        </p>
-                        <div className="grid grid-cols-2 gap-1.5 text-xs">
-                          <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                            <input
-                              type="checkbox"
-                              checked={headerOptions.showUserEmail}
-                              onChange={(e) => setHeaderOptions({ ...headerOptions, showUserEmail: e.target.checked })}
-                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                            />
-                            <span className="text-slate-700">Correo Electrónico</span>
-                          </label>
-
-                          <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                            <input
-                              type="checkbox"
-                              checked={headerOptions.showUserPhone}
-                              onChange={(e) => setHeaderOptions({ ...headerOptions, showUserPhone: e.target.checked })}
-                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                            />
-                            <span className="text-slate-700">Teléfono</span>
-                          </label>
-
-                          <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                            <input
-                              type="checkbox"
-                              checked={headerOptions.showUserDate}
-                              onChange={(e) => setHeaderOptions({ ...headerOptions, showUserDate: e.target.checked })}
-                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                            />
-                            <span className="text-slate-700">Fecha Verificación</span>
-                          </label>
-
-                          <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                            <input
-                              type="checkbox"
-                              checked={headerOptions.showUserStatus}
-                              onChange={(e) => setHeaderOptions({ ...headerOptions, showUserStatus: e.target.checked })}
-                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                            />
-                            <span className="text-slate-700">Estatus Aprobado</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Header Toggles */}
-                      <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-2">
-                        Elementos del Encabezado:
-                      </p>
-
-                      <div className="space-y-1.5 text-xs">
-                        <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                          <input
-                            type="checkbox"
-                            checked={headerOptions.showLogo}
-                            onChange={(e) => setHeaderOptions({ ...headerOptions, showLogo: e.target.checked })}
-                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                          />
-                          <span className="text-slate-700">Logo institucional (FAJA-EXT)</span>
-                        </label>
-
-                        <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                          <input
-                            type="checkbox"
-                            checked={headerOptions.showTitle}
-                            onChange={(e) => setHeaderOptions({ ...headerOptions, showTitle: e.target.checked })}
-                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                          />
-                          <span className="text-slate-700">Título principal del reporte</span>
-                        </label>
-
-                        <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                          <input
-                            type="checkbox"
-                            checked={headerOptions.showSubtitle}
-                            onChange={(e) => setHeaderOptions({ ...headerOptions, showSubtitle: e.target.checked })}
-                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                          />
-                          <span className="text-slate-700">Subtítulo (Plataforma Unificada)</span>
-                        </label>
-
-                        <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                          <input
-                            type="checkbox"
-                            checked={headerOptions.showDate}
-                            onChange={(e) => setHeaderOptions({ ...headerOptions, showDate: e.target.checked })}
-                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                          />
-                          <span className="text-slate-700">Fecha de emisión</span>
-                        </label>
-
-                        <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                          <input
-                            type="checkbox"
-                            checked={headerOptions.showAuditor}
-                            onChange={(e) => setHeaderOptions({ ...headerOptions, showAuditor: e.target.checked })}
-                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                          />
-                          <span className="text-slate-700">Nombre del auditor</span>
-                        </label>
-
-                        <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
-                          <input
-                            type="checkbox"
-                            checked={headerOptions.showDocPhoto}
-                            onChange={(e) => setHeaderOptions({ ...headerOptions, showDocPhoto: e.target.checked })}
-                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                          />
-                          <span className="font-bold text-indigo-900">Mostrar Cédula Digitalizada</span>
-                        </label>
-                      </div>
-
-                      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
-                        <button
-                          type="button"
-                          onClick={() => setHeaderOptions({
-                            showLogo: true,
-                            showTitle: true,
-                            showSubtitle: true,
-                            showDate: true,
-                            showAuditor: true,
-                            showReference: true,
-                            showDocPhoto: true,
-                            showUserEmail: true,
-                            showUserPhone: true,
-                            showUserStatus: true,
-                            showUserDate: true,
-                            showUid: true,
-                            uidTextSize: 'text-xs',
-                            idNumberTextSize: 'text-sm',
-                            nameTextSize: 'text-base',
-                            docWidthPercent: 35,
-                            reportLayout: 'dossier',
-                          })}
-                          className="text-[11px] text-slate-500 hover:text-slate-800 underline cursor-pointer"
-                        >
-                          Restablecer predeterminados
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            setIsOptionsOpen(false);
-                            await handleOpenPrintModal();
-                          }}
-                          className="px-3 py-1.5 bg-[#0e1b29] hover:bg-slate-800 text-white rounded-lg text-xs font-bold cursor-pointer"
-                        >
-                          Ver Reporte
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
+              <button
+                onClick={() => setIsOptionsOpen((prev) => !prev)}
+                className="text-slate-700 hover:text-indigo-600 font-bold cursor-pointer inline-flex items-center gap-1"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Configuración de Reporte</span>
+              </button>
+              <span>•</span>
               <button
                 onClick={handleOpenPrintModal}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow transition-all flex items-center gap-2 cursor-pointer"
+                className="text-[#d9251d] hover:underline font-bold cursor-pointer inline-flex items-center gap-1"
               >
-                <Printer className="w-4 h-4" />
-                <span>Reporte</span>
+                <Printer className="w-3.5 h-3.5" />
+                <span>Imprimir / PDF</span>
               </button>
             </div>
           </div>
@@ -963,7 +990,7 @@ export const ViewerPortal = () => {
                 <h3 className="text-base font-extrabold text-slate-900">
                   {selectedDoc.fullName}
                   <span className="ml-2 font-mono text-sm text-slate-500 font-normal">
-                    (V-{selectedDoc.idNumber})
+                    ({formatIdNumber(selectedDoc)})
                   </span>
                 </h3>
               </div>
@@ -1196,7 +1223,7 @@ export const ViewerPortal = () => {
                               <h3 className={`${headerOptions.nameTextSize} font-black text-slate-900`}>{u.fullName}</h3>
                             </div>
                             <span className={`font-mono ${headerOptions.idNumberTextSize} font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-0.5 rounded`}>
-                              V-{u.idNumber}
+                              {formatIdNumber(u)}
                             </span>
                           </div>
 
@@ -1280,7 +1307,7 @@ export const ViewerPortal = () => {
                           <span className="font-mono text-xs font-black bg-slate-900 text-white px-2 py-0.5 rounded">#{i + 1}</span>
                           <h4 className={`${headerOptions.nameTextSize} font-bold text-slate-900 mt-1.5`}>{u.fullName}</h4>
                           <div className={`text-slate-600 font-mono font-semibold mt-0.5`}>
-                            Cédula: <span className={`${headerOptions.idNumberTextSize} text-indigo-700 font-bold`}>V-{u.idNumber}</span>
+                            Cédula: <span className={`${headerOptions.idNumberTextSize} text-indigo-700 font-bold`}>{formatIdNumber(u)}</span>
                           </div>
                         </div>
                         {headerOptions.showUid && (
@@ -1352,13 +1379,13 @@ export const ViewerPortal = () => {
                       {headerOptions.showUid && (
                         <td className={`p-1 border-r font-mono text-indigo-700 font-bold ${headerOptions.uidTextSize}`}>{getUserUID(u)}</td>
                       )}
-                      <td className={`p-2 border-r font-mono ${headerOptions.idNumberTextSize}`}>V-{u.idNumber}</td>
+                      <td className={`p-2 border-r font-mono ${headerOptions.idNumberTextSize}`}>{formatIdNumber(u)}</td>
                       <td className={`p-2 border-r font-bold ${headerOptions.nameTextSize}`}>{u.fullName}</td>
                       {headerOptions.showDocPhoto && (
                         <td className="p-2 border-r text-center align-middle">
                           <div className="w-full aspect-[16/10] mx-auto bg-slate-50 border border-slate-200 rounded p-1 flex items-center justify-center">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={u.idPhotoUrl} alt={`Cédula V-${u.idNumber}`} className="w-full h-full object-contain" />
+                            <img src={u.idPhotoUrl} alt={`Cédula ${formatIdNumber(u)}`} className="w-full h-full object-contain" />
                           </div>
                         </td>
                       )}

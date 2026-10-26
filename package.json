@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "audit": "tsx scripts/util-audit.ts",
+    "migrate": "tsx scripts/migrate-sheet.ts"
+  },
+  "bin": {
+    "util-audit": "./scripts/util-audit.ts",
+    "migrate": "./scripts/migrate-sheet.ts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -14,6 +20,7 @@
     "csv-parse": "^7.0.3",
     "exceljs": "^4.4.0",
     "framer-motion": "^13.2.0",
+    "googleapis": "^188.0.0",
     "gsap": "^3.15.0",
     "icons": "^1.0.0",
     "lucide-react": "^1.46.0",
@@ -34,5 +41,8 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "allowScripts": {
+    "googleapis@188.0.0": true
   }
 }

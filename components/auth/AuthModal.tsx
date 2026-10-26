@@ -38,6 +38,7 @@ export const AuthModal = () => {
   // Registration fields
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [idType, setIdType] = useState(true); // true = V-, false = E-
   const [idNumber, setIdNumber] = useState('');
   const [idPhotoUrl, setIdPhotoUrl] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -47,7 +48,6 @@ export const AuthModal = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isAuthModalOpen) return null;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -130,6 +130,7 @@ export const AuthModal = () => {
       email,
       phone,
       idNumber: cleanId,
+      idType,
       idPhotoUrl,
       password,
     });
@@ -146,13 +147,14 @@ export const AuthModal = () => {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden my-8"
-        >
+      {isAuthModalOpen && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden my-8"
+          >
           {/* Header */}
           <div className="bg-[#0e1b29] text-white p-6 relative border-b-4 border-[#d9251d]">
             <div className="flex items-center justify-between">
@@ -329,20 +331,31 @@ export const AuthModal = () => {
                 {/* ID Number in Numbers */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Número de Documento de Identidad / Cédula (Sólo Números) *
+                    Tipo y Número de Documento de Identidad / Cédula *
                   </label>
-                  <div className="relative">
-                    <CreditCard className="w-5 h-5 absolute left-3 top-3 text-slate-400" />
-                    <input
-                      type="text"
-                      value={idNumber}
-                      onChange={(e) => setIdNumber(e.target.value.replace(/\D/g, ''))}
-                      placeholder="Ej. 18492043"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-[#d9251d]"
-                    />
+                  <div className="flex gap-2">
+                    <select
+                      value={idType ? 'V' : 'E'}
+                      onChange={(e) => setIdType(e.target.value === 'V')}
+                      className="px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#d9251d] cursor-pointer"
+                    >
+                      <option value="V">V- (Venezolano)</option>
+                      <option value="E">E- (Extranjero)</option>
+                    </select>
+
+                    <div className="relative flex-1">
+                      <CreditCard className="w-5 h-5 absolute left-3 top-3 text-slate-400" />
+                      <input
+                        type="text"
+                        value={idNumber}
+                        onChange={(e) => setIdNumber(e.target.value.replace(/\D/g, ''))}
+                        placeholder="Ej. 18492043"
+                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-[#d9251d]"
+                      />
+                    </div>
                   </div>
                   <span className="text-[11px] text-slate-500 mt-1 block">
-                    Formato: Sólo dígitos numéricos sin puntos ni letras.
+                    Selecciona V- para nacional o E- para extranjero e ingresa sólo los números.
                   </span>
                 </div>
 
@@ -472,6 +485,7 @@ export const AuthModal = () => {
           </div>
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   );
 };

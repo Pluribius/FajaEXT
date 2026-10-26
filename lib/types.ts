@@ -15,9 +15,16 @@ export interface AppUser {
   status: VerificationStatus;
   visibleToViewers: boolean;
   batchId?: string;
+  idType?: boolean; // true = Venezolana (V-), false = Extranjero (E-)
   createdAt: string;
   verifiedAt?: string;
   notes?: string;
+}
+
+export function formatIdNumber(user: { idNumber?: string; idType?: boolean } | null | undefined): string {
+  if (!user || !user.idNumber) return '';
+  const prefix = user.idType === false ? 'E-' : 'V-';
+  return `${prefix}${user.idNumber}`;
 }
 
 export interface SupabaseProfile {
@@ -33,6 +40,7 @@ export interface SupabaseProfile {
   verified_at?: string | null;
   created_at?: string;
   updated_at?: string | null;
+  ID_Type?: boolean;
 }
 
 export interface SupabaseUserInfoJoined {
@@ -42,6 +50,7 @@ export interface SupabaseUserInfoJoined {
   id_number: string;
   role: string;
   created_at: string;
+  ID_Type?: boolean;
   contact_info?: {
     id: string;
     email: string;
@@ -87,6 +96,7 @@ export function supabaseJoinedToAppUser(row: SupabaseUserInfoJoined): AppUser {
   const rawDoc = row.documents?.id_document_url;
   const idPhotoUrl = resolveDocumentImageUrl(rawDoc);
   const batchId = row.payment_status?.batch_id || undefined;
+  const idType = row.ID_Type !== undefined ? row.ID_Type : true;
 
   return {
     id: row.id,
@@ -99,6 +109,7 @@ export function supabaseJoinedToAppUser(row: SupabaseUserInfoJoined): AppUser {
     status,
     visibleToViewers: status === 'aprobado',
     batchId,
+    idType,
     createdAt: row.created_at ? row.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     verifiedAt: row.verification_status?.verified_at ? row.verification_status.verified_at.split('T')[0] : undefined,
     notes: batchId ? `Lote asignado: ${batchId}` : undefined,
@@ -124,6 +135,7 @@ export function profileToAppUser(profile: SupabaseProfile, defaultRole: UserRole
   }
 
   const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim() || profile.email;
+  const idType = profile.ID_Type !== undefined ? profile.ID_Type : true;
 
   return {
     id: profile.id,
@@ -136,6 +148,7 @@ export function profileToAppUser(profile: SupabaseProfile, defaultRole: UserRole
     status,
     visibleToViewers: status === 'aprobado',
     batchId: profile.batch_id || undefined,
+    idType,
     createdAt: profile.created_at ? profile.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     verifiedAt: profile.verified_at ? profile.verified_at.split('T')[0] : undefined,
     notes: profile.batch_id ? `Lote asignado: ${profile.batch_id}` : undefined,

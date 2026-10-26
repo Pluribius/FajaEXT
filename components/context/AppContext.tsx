@@ -14,13 +14,15 @@ import {
   checkSupabaseConnection,
   resendConfirmationEmail,
   updateUserEmail,
-  updateUserPassword
+  updateUserPassword,
+  updateUserInSupabase
 } from '@/lib/supabase';
 
 interface EmailConfirmationData {
   email: string;
   fullName: string;
   idNumber: string;
+  idType?: boolean;
 }
 
 interface AppContextType {
@@ -54,6 +56,7 @@ interface AppContextType {
     email: string;
     phone: string;
     idNumber: string;
+    idType?: boolean;
     idPhotoUrl: string;
     password?: string;
   }) => Promise<{ success: boolean; error?: string }>;
@@ -440,6 +443,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     email: string;
     phone: string;
     idNumber: string;
+    idType?: boolean;
     idPhotoUrl: string;
     password?: string;
   }): Promise<{ success: boolean; error?: string }> => {
@@ -479,6 +483,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
               full_name: payload.fullName.trim(),
               phone: payload.phone.trim(),
               id_number: payload.idNumber.trim(),
+              id_type: payload.idType !== undefined ? payload.idType : true,
               id_photo_url: payload.idPhotoUrl,
               role: 'client',
             },
@@ -503,6 +508,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         email: cleanEmail,
         phone: payload.phone,
         idNumber: payload.idNumber,
+        idType: payload.idType !== undefined ? payload.idType : true,
         idPhotoUrl: payload.idPhotoUrl,
         verificationStatus: 'pending',
       });
@@ -517,6 +523,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       email: cleanEmail,
       phone: payload.phone.trim(),
       idNumber: payload.idNumber.trim(),
+      idType: payload.idType !== undefined ? payload.idType : true,
       idPhotoUrl: payload.idPhotoUrl || '/images/formato vacio rif.png',
       password: payload.password,
       role: 'client',
@@ -629,6 +636,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       email: newUser.email,
       phone: newUser.phone,
       idNumber: newUser.idNumber,
+      idType: newUser.idType !== undefined ? newUser.idType : true,
       idPhotoUrl: newUser.idPhotoUrl,
       verificationStatus: newUser.status,
       batchId: newUser.batchId,
@@ -636,14 +644,29 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const updateUser = (id: string, updates: Partial<AppUser>) => {
-    const updated = users.map((u) => (u.id === id ? { ...u, ...updates } : u));
+    const finalUpdates = {
+      ...updates,
+      ...(updates.status === 'aprobado' && updates.visibleToViewers === undefined ? { visibleToViewers: true } : {}),
+    };
+    const updated = users.map((u) => (u.id === id ? { ...u, ...finalUpdates } : u));
     saveUsers(updated);
     if (currentUser?.id === id) {
-      saveCurrentUser({ ...currentUser, ...updates });
+      saveCurrentUser({ ...currentUser, ...finalUpdates });
     }
-    // Sync verification status to Supabase if it's a UUID
-    if (id.includes('-') && id.length > 20 && updates.status) {
-      updateVerificationInSupabase(id, updates.status, updates.batchId);
+    // Sync verification status and profile changes to Supabase if it's a UUID
+    if (id.includes('-') && id.length > 20) {
+      if (finalUpdates.status) {
+        updateVerificationInSupabase(id, finalUpdates.status, finalUpdates.batchId);
+      }
+      updateUserInSupabase(id, {
+        fullName: finalUpdates.fullName,
+        email: finalUpdates.email,
+        phone: finalUpdates.phone,
+        idNumber: finalUpdates.idNumber,
+        idType: finalUpdates.idType,
+        role: finalUpdates.role,
+        batchId: finalUpdates.batchId,
+      });
     }
   };
 
@@ -682,10 +705,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const reviewUserStatus = (id: string, status: VerificationStatus, notes?: string) => {
     const updated = users.map((u) => {
       if (u.id === id) {
+        const isApproved = status === 'aprobado';
         return {
           ...u,
           status,
-          verifiedAt: status === 'aprobado' ? new Date().toISOString().split('T')[0] : u.verifiedAt,
+          visibleToViewers: isApproved ? true : u.visibleToViewers,
+          verifiedAt: isApproved ? new Date().toISOString().split('T')[0] : u.verifiedAt,
           notes: notes !== undefined ? notes : u.notes,
         };
       }
@@ -700,12 +725,14 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const bulkReviewUserStatus = async (ids: string[], status: VerificationStatus, notes?: string) => {
+    const isApproved = status === 'aprobado';
     const updated = users.map((u) => {
       if (ids.includes(u.id)) {
         return {
           ...u,
           status,
-          verifiedAt: status === 'aprobado' ? new Date().toISOString().split('T')[0] : u.verifiedAt,
+          visibleToViewers: isApproved ? true : u.visibleToViewers,
+          verifiedAt: isApproved ? new Date().toISOString().split('T')[0] : u.verifiedAt,
           notes: notes !== undefined ? notes : u.notes,
         };
       }

@@ -41,7 +41,7 @@ import {
   Database,
 } from 'lucide-react';
 import { useApp } from '@/components/context/AppContext';
-import { AppUser, SupportTicket, UserRole, VerificationStatus } from '@/lib/types';
+import { AppUser, SupportTicket, UserRole, VerificationStatus, formatIdNumber } from '@/lib/types';
 import { DocumentImage } from '@/components/ui/DocumentImage';
 import { getOriginalDocumentUrl } from '@/lib/documentUtils';
 
@@ -170,11 +170,13 @@ export const AdminDashboard = () => {
 
     const filtered = users.filter((u) => {
       // Search matches phone, government id number, email, or name
+      const formattedId = formatIdNumber(u).toLowerCase();
       const matchesSearch =
         !rawSearch ||
         u.email.toLowerCase().includes(rawSearch) ||
         u.fullName.toLowerCase().includes(rawSearch) ||
         u.idNumber.toLowerCase().includes(rawSearch) ||
+        formattedId.includes(rawSearch) ||
         u.phone.toLowerCase().includes(rawSearch) ||
         (cleanDigits.length > 0 && u.idNumber.replace(/\D/g, '').includes(cleanDigits)) ||
         (cleanDigits.length > 0 && u.phone.replace(/\D/g, '').includes(cleanDigits));
@@ -297,6 +299,7 @@ export const AdminDashboard = () => {
       email: editingUser.email,
       phone: editingUser.phone,
       idNumber: editingUser.idNumber,
+      idType: editingUser.idType,
       role: editingUser.role,
       status: editingUser.status,
       visibleToViewers: editingUser.visibleToViewers,
@@ -861,7 +864,7 @@ export const AdminDashboard = () => {
 
                           {/* ID Number */}
                           <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
-                            V-{user.idNumber}
+                            {formatIdNumber(user)}
                           </td>
 
                           {/* Phone */}
@@ -1123,7 +1126,7 @@ export const AdminDashboard = () => {
                         {u.fullName}
                       </h4>
                       <div className="text-xs text-slate-500 font-mono">
-                        Cédula ingresada: V-{u.idNumber}
+                        Cédula ingresada: {formatIdNumber(u)}
                       </div>
                     </div>
                     <span className="text-xs text-slate-400 font-mono">{u.createdAt}</span>
@@ -1405,7 +1408,7 @@ export const AdminDashboard = () => {
                     Cédula Declarada
                   </span>
                   <span className="font-mono font-bold text-slate-900 text-sm">
-                    V-{reviewingUser.idNumber}
+                    {formatIdNumber(reviewingUser)}
                   </span>
                 </div>
                 <div>
@@ -1539,7 +1542,25 @@ export const AdminDashboard = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 uppercase mb-1">
-                    Cédula
+                    Tipo de Cédula
+                  </label>
+                  <select
+                    value={editingUser.idType === false ? 'false' : 'true'}
+                    onChange={(e) =>
+                      setEditingUser({
+                        ...editingUser,
+                        idType: e.target.value === 'true',
+                      })
+                    }
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold"
+                  >
+                    <option value="true">V- (Venezolano)</option>
+                    <option value="false">E- (Extranjero)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase mb-1">
+                    Número de Cédula
                   </label>
                   <input
                     type="text"
@@ -1554,19 +1575,20 @@ export const AdminDashboard = () => {
                     className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase mb-1">
-                    Teléfono
-                  </label>
-                  <input
-                    type="text"
-                    value={editingUser.phone}
-                    onChange={(e) =>
-                      setEditingUser({ ...editingUser, phone: e.target.value })
-                    }
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                  />
-                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">
+                  Teléfono
+                </label>
+                <input
+                  type="text"
+                  value={editingUser.phone}
+                  onChange={(e) =>
+                    setEditingUser({ ...editingUser, phone: e.target.value })
+                  }
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">

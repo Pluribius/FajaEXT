@@ -15,7 +15,7 @@ import {
   Mail
 } from 'lucide-react';
 import { useApp } from '@/components/context/AppContext';
-import { getUserUID } from '@/lib/types';
+import { getUserUID, formatIdNumber } from '@/lib/types';
 
 export const UserUidBadge = () => {
   const { currentUser, activeView, setActiveView } = useApp();
@@ -126,7 +126,7 @@ export const UserUidBadge = () => {
                   <CreditCard className="w-3 h-3 text-amber-400" />
                   Cédula:
                 </span>
-                <span className="font-mono text-slate-300">V-{currentUser.idNumber}</span>
+                <span className="font-mono text-slate-300">{formatIdNumber(currentUser)}</span>
               </div>
 
               <div className="flex items-center justify-between">

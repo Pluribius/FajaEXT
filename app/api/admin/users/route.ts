@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, userIds, status, role, notes, batchId } = body;
+    const { userId, userIds, status, role, notes, batchId, fullName, idNumber, idType, email, phone } = body;
 
     const targetIds: string[] = Array.isArray(userIds)
       ? userIds
@@ -90,18 +90,47 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    // 2. Update role in users_info if specified
+    // 2. Update users_info (role, ID_Type, id_number, first_name, last_name)
+    const userInfoUpdates: any = {};
     if (role) {
-      const dbRole = role === 'admin' ? 'admin' : role === 'viewer' ? 'viewer' : 'user';
+      userInfoUpdates.role = role === 'admin' ? 'admin' : role === 'viewer' ? 'viewer' : 'user';
+    }
+    if (idType !== undefined) {
+      userInfoUpdates.ID_Type = Boolean(idType);
+    }
+    if (idNumber !== undefined) {
+      userInfoUpdates.id_number = String(idNumber).replace(/\D/g, '');
+    }
+    if (fullName) {
+      const nameParts = fullName.trim().split(' ');
+      userInfoUpdates.first_name = nameParts[0] || 'Usuario';
+      userInfoUpdates.last_name = nameParts.slice(1).join(' ') || 'Registrado';
+    }
+
+    if (Object.keys(userInfoUpdates).length > 0) {
       for (const id of targetIds) {
         await supabase
           .from('users_info')
-          .update({ role: dbRole as any })
+          .update(userInfoUpdates)
           .eq('id', id);
       }
     }
 
-    // 3. Update payment_status / batch_id if specified
+    // 3. Update contact_info (email, phone)
+    if (email !== undefined || phone !== undefined) {
+      const contactUpdates: any = {};
+      if (email) contactUpdates.email = email.trim().toLowerCase();
+      if (phone !== undefined) contactUpdates.phone = phone || null;
+
+      for (const id of targetIds) {
+        await supabase
+          .from('contact_info')
+          .update(contactUpdates)
+          .eq('id', id);
+      }
+    }
+
+    // 4. Update payment_status / batch_id if specified
     if (batchId !== undefined) {
       for (const id of targetIds) {
         await supabase

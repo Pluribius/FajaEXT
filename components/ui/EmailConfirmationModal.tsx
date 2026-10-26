@@ -14,6 +14,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useApp } from '@/components/context/AppContext';
+import { formatIdNumber } from '@/lib/types';
 
 export const EmailConfirmationModal = () => {
   const { confirmationEmailData, closeConfirmationEmail, resendConfirmation, changeEmail } = useApp();
@@ -179,7 +180,7 @@ export const EmailConfirmationModal = () => {
 
                 <p className="text-sm text-slate-600 leading-relaxed">
                   Hemos recibido exitosamente tu solicitud de registro con documento de identidad N°{' '}
-                  <strong className="text-slate-900">V-{confirmationEmailData.idNumber}</strong>.
+                  <strong className="text-slate-900">{formatIdNumber(confirmationEmailData)}</strong>.
                 </p>
 
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 flex items-start gap-2.5">
