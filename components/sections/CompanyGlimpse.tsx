@@ -35,7 +35,7 @@ export const CompanyGlimpse = () => {
   return (
     <section id="proceso" className="w-full py-20 lg:py-24 bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-6">
-        
+
         {/* Top Split Header: Bold Headline on Left, Context & Blue Pill Button on Right (Matching Reference Photo) */}
         <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8 mb-14">
           <div className="max-w-xl">
@@ -79,6 +79,7 @@ export const CompanyGlimpse = () => {
                 src={card.image}
                 alt={card.title}
                 fill
+                sizes="(max-width: 768px) 100vw, 33vw"
                 className="object-cover object-center group-hover:scale-105 transition-transform duration-700 opacity-70 group-hover:opacity-85"
               />
 

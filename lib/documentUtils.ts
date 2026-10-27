@@ -1,7 +1,6 @@
 /**
  * Utilities for extracting, transforming, and rendering stashed government ID documents
  */
-
 export function extractDriveId(url: string | null | undefined): string | null {
   if (!url) return null;
   const clean = url.trim();
@@ -19,7 +18,7 @@ export function extractDriveId(url: string | null | undefined): string | null {
 /**
  * Returns a browser-renderable image URL from any stashed document URL (Google Drive, local, or data URL)
  */
-export function resolveDocumentImageUrl(url: string | null | undefined): string {
+export function resolveDocumentImageUrl(url: string | null | undefined, forceRefresh: boolean = false): string {
   if (!url || !url.trim()) {
     return '/images/formato vacio rif.png';
   }
@@ -31,27 +30,29 @@ export function resolveDocumentImageUrl(url: string | null | undefined): string 
     return clean;
   }
 
+  const cacheBuster = forceRefresh ? `&t=${Date.now()}` : '';
+
   // Google Drive files: route through our high-performance document-image proxy
   const driveId = extractDriveId(clean);
   if (driveId) {
-    return `/api/document-image?id=${driveId}`;
+    return `/api/document-image?id=${driveId}${cacheBuster}`;
   }
 
   // Other external HTTP/HTTPS images: route through proxy to bypass CORS/hotlinking
   if (clean.startsWith('http://') || clean.startsWith('https://')) {
-    return `/api/document-image?url=${encodeURIComponent(clean)}`;
+    return `/api/document-image?url=${encodeURIComponent(clean)}${cacheBuster}`;
   }
 
   return clean;
 }
-
 /**
  * Direct Google CDN URL for fast thumbnail display with no-referrer
  */
-export function getDirectDriveThumbnail(url: string | null | undefined): string | null {
+export function getDirectDriveThumbnail(url: string | null | undefined, forceRefresh: boolean = false): string | null {
   const driveId = extractDriveId(url);
   if (!driveId) return null;
-  return `https://lh3.googleusercontent.com/d/${driveId}`;
+  const cacheBuster = forceRefresh ? `?t=${Date.now()}` : '';
+  return `https://lh3.googleusercontent.com/d/${driveId}${cacheBuster}`;
 }
 
 /**

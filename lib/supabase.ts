@@ -16,6 +16,12 @@ export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     detectSessionInUrl: true,
   },
 });
+
+// Caching and Deduplication Maps
+const profileCache = new Map<string, { data: AppUser | null; timestamp: number }>();
+const inFlightRequests = new Map<string, Promise<AppUser | null>>();
+const CACHE_TTL = 15000; // 15-second cache window
+
 /**
  * Fetch all users from Supabase database (users_info joined with contact_info, documents, verification_status, payment_status)
  */
@@ -25,7 +31,7 @@ export async function getUsersFromSupabase(): Promise<{
   error?: string;
 }> {
   try {
-    // 1. Prefer fetching via our internal API route which has full service-role database access
+    // 1. Prefer fetching via our internal API route which has full service-role database access[cite: 1, 4]
     if (typeof window !== 'undefined') {
       const res = await fetch('/api/admin/users', { cache: 'no-store' });
       if (res.ok) {
@@ -36,7 +42,7 @@ export async function getUsersFromSupabase(): Promise<{
       }
     }
 
-    // 2. Direct client fallback (if authenticated session or direct access)
+    // 2. Direct client fallback (if authenticated session or direct access)[cite: 1, 4]
     const { data, error } = await supabase
       .from('users_info')
       .select('*, contact_info(*), documents(*), verification_status(*), payment_status(*)')
@@ -63,30 +69,62 @@ export async function getUsersFromSupabase(): Promise<{
   }
 }
 
-// Alias for backwards compatibility
+// Alias for backwards compatibility[cite: 1, 4]
 export const getProfilesFromSupabase = getUsersFromSupabase;
 
 /**
- * Fetch a single user profile by Auth/Profile UUID
+ * Fetch a single user profile by Auth/Profile UUID with in-flight deduplication & caching
  */
 export async function getProfileById(id: string): Promise<AppUser | null> {
-  try {
-    const { data, error } = await supabase
-      .from('users_info')
-      .select('*, contact_info(*), documents(*), verification_status(*), payment_status(*)')
-      .eq('id', id)
-      .maybeSingle();
+  if (!id) return null;
 
-    if (error || !data) return null;
-    const { supabaseJoinedToAppUser } = await import('./types');
-    return supabaseJoinedToAppUser(data as any);
-  } catch {
-    return null;
+  const now = Date.now();
+  const cached = profileCache.get(id);
+
+  // 1. Return fresh cached data if available
+  if (cached && now - cached.timestamp < CACHE_TTL) {
+    return cached.data;
   }
+
+  // 2. If a request for this ID is already in flight, reuse the active promise (prevents connection storms)
+  if (inFlightRequests.has(id)) {
+    return inFlightRequests.get(id)!;
+  }
+
+  // 3. Create a single shared promise for this fetch operation
+  const fetchPromise = (async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users_info')
+        .select('*, contact_info(*), documents(*), verification_status(*), payment_status(*)')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error || !data) {
+        profileCache.set(id, { data: null, timestamp: now });
+        return null;
+      }
+
+      const { supabaseJoinedToAppUser } = await import('./types');
+      const convertedUser = supabaseJoinedToAppUser(data as any);
+
+      profileCache.set(id, { data: convertedUser, timestamp: now });
+      return convertedUser;
+    } catch (err) {
+      console.warn('[Supabase] Exception fetching profile by ID:', err);
+      return null;
+    } finally {
+      // Remove from in-flight map once resolved
+      inFlightRequests.delete(id);
+    }
+  })();
+
+  inFlightRequests.set(id, fetchPromise);
+  return fetchPromise;
 }
 
 /**
- * Create or update a profile in Supabase
+ * Create or update a profile in Supabase[cite: 1, 4]
  */
 export async function upsertProfileInSupabase(user: {
   id: string;
@@ -104,7 +142,7 @@ export async function upsertProfileInSupabase(user: {
     const firstName = nameParts[0] || 'Usuario';
     const lastName = nameParts.slice(1).join(' ') || 'Registrado';
 
-    // 1. Upsert users_info
+    // 1. Upsert users_info[cite: 1, 4]
     await supabase.from('users_info').upsert({
       id: user.id,
       first_name: firstName,
@@ -114,14 +152,14 @@ export async function upsertProfileInSupabase(user: {
       ID_Type: user.idType !== undefined ? user.idType : true,
     });
 
-    // 2. Upsert contact_info
+    // 2. Upsert contact_info[cite: 1, 4]
     await supabase.from('contact_info').upsert({
       id: user.id,
       email: user.email.toLowerCase().trim(),
       phone: user.phone || null,
     });
 
-    // 3. Upsert documents
+    // 3. Upsert documents[cite: 1, 4]
     if (user.idPhotoUrl) {
       await supabase.from('documents').upsert({
         id: user.id,
@@ -129,7 +167,7 @@ export async function upsertProfileInSupabase(user: {
       });
     }
 
-    // 4. Upsert verification_status
+    // 4. Upsert verification_status[cite: 1, 4]
     const dbStatus =
       user.verificationStatus === 'aprobado'
         ? 'approved'
@@ -143,7 +181,7 @@ export async function upsertProfileInSupabase(user: {
       verified_at: dbStatus === 'approved' ? new Date().toISOString() : null,
     });
 
-    // 5. Upsert payment_status if batchId
+    // 5. Upsert payment_status if batchId[cite: 1, 4]
     if (user.batchId) {
       await supabase.from('payment_status').upsert({
         id: user.id,
@@ -159,7 +197,7 @@ export async function upsertProfileInSupabase(user: {
 }
 
 /**
- * Update user general profile info (first/last name, id_number, ID_Type, phone, email, notes, role)
+ * Update user general profile info[cite: 1, 4]
  */
 export async function updateUserInSupabase(
   id: string,
@@ -186,7 +224,6 @@ export async function updateUserInSupabase(
       }
     }
 
-    // Fallback direct updates if called directly
     const userInfoUpdates: any = {};
     if (updates.fullName) {
       const nameParts = updates.fullName.trim().split(' ');
@@ -220,7 +257,7 @@ export async function updateUserInSupabase(
 }
 
 /**
- * Update user verification status in Supabase
+ * Update user verification status in Supabase[cite: 1, 4]
  */
 export async function updateVerificationInSupabase(
   id: string,
@@ -260,7 +297,7 @@ export async function updateVerificationInSupabase(
 }
 
 /**
- * Bulk update verification status for multiple users
+ * Bulk update verification status for multiple users[cite: 1, 4]
  */
 export async function bulkUpdateVerificationInSupabase(
   userIds: string[],
@@ -284,7 +321,7 @@ export async function bulkUpdateVerificationInSupabase(
 }
 
 /**
- * Delete user from Supabase
+ * Delete user from Supabase[cite: 1, 4]
  */
 export async function deleteUserFromSupabase(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
@@ -305,7 +342,7 @@ export async function deleteUserFromSupabase(userId: string): Promise<{ success:
 }
 
 /**
- * Test connectivity to the Supabase backend
+ * Test connectivity to the Supabase backend[cite: 1, 4]
  */
 export async function checkSupabaseConnection(): Promise<{
   connected: boolean;
@@ -350,7 +387,7 @@ export async function checkSupabaseConnection(): Promise<{
 }
 
 /**
- * Resend confirmation email via Supabase Auth
+ * Resend confirmation email via Supabase Auth[cite: 1, 4]
  */
 export async function resendConfirmationEmail(email: string): Promise<{
   success: boolean;
@@ -379,7 +416,7 @@ export async function resendConfirmationEmail(email: string): Promise<{
 }
 
 /**
- * Update user email in Supabase Auth & public.profiles
+ * Update user email in Supabase Auth & public.profiles[cite: 1, 4]
  */
 export async function updateUserEmail(
   newEmail: string,
@@ -388,17 +425,14 @@ export async function updateUserEmail(
   try {
     const cleanEmail = newEmail.trim().toLowerCase();
 
-    // 1. Update in Supabase Auth (sends confirmation email to new address)
     const { data: authData, error: authError } = await supabase.auth.updateUser({
       email: cleanEmail,
     });
 
     if (authError) {
       console.warn('[Supabase] Update email error:', authError.message);
-      // Even if auth update fails because of current session state, we update profiles table
     }
 
-    // 2. Update in public.profiles table
     if (userId) {
       const { error: profileError } = await supabase
         .from('profiles')
@@ -423,7 +457,7 @@ export async function updateUserEmail(
 }
 
 /**
- * Update user password in Supabase Auth
+ * Update user password in Supabase Auth[cite: 1, 4]
  */
 export async function updateUserPassword(newPassword: string): Promise<{
   success: boolean;
@@ -452,4 +486,3 @@ export async function updateUserPassword(newPassword: string): Promise<{
     return { success: false, error: err?.message || 'Error al actualizar la contraseña' };
   }
 }
-

@@ -25,7 +25,7 @@ import {
 import { useApp } from '@/components/context/AppContext';
 import { getUserUID, formatIdNumber } from '@/lib/types';
 import { DocumentImage } from '@/components/ui/DocumentImage';
-import { getOriginalDocumentUrl } from '@/lib/documentUtils';
+
 import ExcelJS from 'exceljs';
 
 // In-memory cache for images to prevent redundant downloads and speed up rendering
@@ -104,6 +104,13 @@ export const ViewerPortal = () => {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+
+  //Gdrive Cache override button
+  const handleClearImageCache = () => {
+    imageCache.clear();
+    console.log('🧹 [Cache Cleared] In-memory image cache flushed by admin.');
+    alert('¡Caché de imágenes limpiada con éxito! Las próximas visualizaciones y exportaciones descargarán las imágenes más recientes de Google Drive.');
+  };
 
   // Configuration for toggling elements and text sizing in official reports
   const [headerOptions, setHeaderOptions] = useState({
@@ -453,7 +460,17 @@ export const ViewerPortal = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* 🧹 Cache Override Button */}
+                <button
+                  type="button"
+                  onClick={handleClearImageCache}
+                  className="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                  title="Fuerza la recarga de imágenes desde Google Drive en la próxima exportación o vista"
+                >
+                  <span>🧹 Limpiar Caché</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setHeaderOptions({
@@ -477,7 +494,7 @@ export const ViewerPortal = () => {
                   })}
                   className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors cursor-pointer"
                 >
-                  Restablecer predeterminados
+                  Restablecer
                 </button>
                 <button
                   type="button"
@@ -499,6 +516,7 @@ export const ViewerPortal = () => {
                 </button>
               </div>
             </div>
+
 
             {/* Symmetrical 4-Column Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1188,7 +1206,7 @@ export const ViewerPortal = () => {
                     </h2>
                   )}
                   {headerOptions.showSubtitle && (
-                    <div className="text-xs text-slate-500">Plataforma Unificada de Control.</div>
+                    <div className="text-xs text-slate-500">59a9c75722ea127b9d8089f7ad649a73cbc8e6fb.</div>
                   )}
                 </div>
               </div>

@@ -18,7 +18,7 @@ const privateKey = process.env.GOOGLE_PRIVATE_KEY;
 const SHEET_FILE_ID = '1PeOnoenE_yqwM7Ei0L5bE_fsjww27qz_8ij-ZyLW020';
 
 // Toggle: set to true to only allow rows where a column contains "migrate"
-const REQUIRE_STATUS_MIGRATE = true;
+const REQUIRE_STATUS_MIGRATE = false;
 
 if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
     throw new Error('❌ Missing valid Supabase URL. Please check your .env or .env.local file.');
