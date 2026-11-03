@@ -1,28 +1,50 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, ChevronDown, FileText, Search } from 'lucide-react';
-import { useApp } from '@/components/context/AppContext';
+import { useApp } from '@/components/auth/AppContext';
+
+const HERO_VIDEOS = [
+  '/video/boat.mp4',
+  '/video/drill.mp4',
+  '/video/oilfield.mp4',
+  '/video/deck.mp4',
+];
 
 export const IndustrialHero = () => {
   const { openAuthModal, currentUser, setActiveView } = useApp();
+
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [isVideoReady, setIsVideoReady] = useState(false);
+
+  useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * HERO_VIDEOS.length);
+    setSelectedVideo(HERO_VIDEOS[randomIndex]);
+  }, []);
 
   return (
     <>
       {/* 1. Fullscreen Hero Video Section (Strict 100vh / 100dvh) */}
       <section className="relative w-full h-[100dvh] min-h-[640px] flex flex-col justify-end overflow-hidden bg-slate-950 pb-8 sm:pb-12">
 
-        {/* Background Video Covering Entire Screen */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover z-0"
-        >
-          <source src="/video/heroban (2).mp4" type="video/mp4" />
-          Tu navegador no soporta videos HTML5.
-        </video>
+        {/* Solid fallback background color while the single random video loads */}
+        <div className="absolute inset-0 bg-[#08111b] z-0" />
+
+        {/* Single Video Element - Only downloads the one randomly chosen file */}
+        {selectedVideo && (
+          <video
+            autoPlay
+            //loop
+            muted
+            playsInline
+            onCanPlay={() => setIsVideoReady(true)}
+            className={`absolute inset-0 w-full h-full object-cover z-0 transition-opacity duration-1000 ${isVideoReady ? 'opacity-100' : 'opacity-0'
+              }`}
+          >
+            <source src={selectedVideo} type="video/mp4" />
+            Tu navegador no soporta videos HTML5.
+          </video>
+        )}
 
         {/* Cinematic Gradient & Dark Overlay to make typography pop */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#08111b] via-[#08111b]/40 to-black/30 z-10 pointer-events-none" />
@@ -89,14 +111,6 @@ export const IndustrialHero = () => {
               <span>{currentUser ? 'Ir a Mi Portal / Expediente' : 'Registrar Mi Expediente'}</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
-
-            <a
-              href="#censos"
-              className="px-7 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm tracking-wider uppercase rounded-full backdrop-blur-md border border-white/25 transition-all flex items-center gap-2 cursor-pointer shadow-lg"
-            >
-              <Search className="w-4 h-4 text-slate-300" />
-              <span>Consultar Información</span>
-            </a>
           </div>
 
         </div>

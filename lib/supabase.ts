@@ -210,6 +210,7 @@ export async function updateUserInSupabase(
     role?: string;
     status?: 'aprobado' | 'pendiente' | 'rechazado';
     batchId?: string;
+    idPhotoUrl?: string;
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -248,6 +249,13 @@ export async function updateUserInSupabase(
       if (updates.email) contactUpdates.email = updates.email.trim().toLowerCase();
       if (updates.phone !== undefined) contactUpdates.phone = updates.phone || null;
       await supabase.from('contact_info').update(contactUpdates).eq('id', id);
+    }
+
+    if (updates.idPhotoUrl) {
+      await supabase.from('documents').upsert({
+        id,
+        id_document_url: updates.idPhotoUrl,
+      });
     }
 
     return { success: true };
@@ -336,6 +344,27 @@ export async function deleteUserFromSupabase(userId: string): Promise<{ success:
       }
     }
     return { success: false, error: 'Failed to delete user' };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
+ * Bulk delete users from Supabase
+ */
+export async function bulkDeleteUsersFromSupabase(userIds: string[]): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (typeof window !== 'undefined') {
+      const res = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds }),
+      });
+      if (res.ok) {
+        return { success: true };
+      }
+    }
+    return { success: false, error: 'Failed to bulk delete users' };
   } catch (err: any) {
     return { success: false, error: err?.message };
   }

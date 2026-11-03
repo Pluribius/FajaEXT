@@ -7,12 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "audit": "tsx scripts/util-audit.ts",
-    "migrate": "tsx scripts/migrate-sheet.ts"
+    "audit": "tsx ./lib/scripts/util-audit.ts",
+    "migrate": "tsx ./lib/scripts/migrate-sheet.ts",
+    "delete-users": "tsx ./lib/scripts/delete-users.ts"
   },
   "bin": {
-    "util-audit": "./scripts/util-audit.ts",
-    "migrate": "./scripts/migrate-sheet.ts"
+    "util-audit": ".components/scripts/util-audit.ts",
+    "migrate": ".components/scripts/migrate-sheet.ts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

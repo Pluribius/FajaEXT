@@ -11,6 +11,7 @@ import {
   updateVerificationInSupabase,
   bulkUpdateVerificationInSupabase,
   deleteUserFromSupabase,
+  bulkDeleteUsersFromSupabase,
   checkSupabaseConnection,
   resendConfirmationEmail,
   updateUserEmail,
@@ -73,10 +74,12 @@ interface AppContextType {
   addUser: (userData: Omit<AppUser, 'id' | 'createdAt'>) => void;
   updateUser: (id: string, updates: Partial<AppUser>) => void;
   deleteUser: (id: string) => void;
+  bulkDeleteUsers: (ids: string[]) => Promise<void>;
   toggleViewerVisibility: (id: string) => void;
   reviewUserStatus: (id: string, status: VerificationStatus, notes?: string) => void;
   bulkReviewUserStatus: (ids: string[], status: VerificationStatus, notes?: string) => Promise<void>;
   bulkToggleViewerVisibility: (ids: string[], visible: boolean) => void;
+  forceReloadUserPictures: (ids: string[]) => void;
 
   // Tickets
   createTicket: (data: {
@@ -666,6 +669,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         idType: finalUpdates.idType,
         role: finalUpdates.role,
         batchId: finalUpdates.batchId,
+        idPhotoUrl: finalUpdates.idPhotoUrl,
       });
     }
   };
@@ -679,6 +683,19 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     // Delete from Supabase if UUID
     if (id.includes('-') && id.length > 20) {
       deleteUserFromSupabase(id);
+    }
+  };
+
+  const bulkDeleteUsers = async (ids: string[]) => {
+    const updated = users.filter((u) => !ids.includes(u.id));
+    saveUsers(updated);
+    if (currentUser && ids.includes(currentUser.id)) {
+      logout();
+    }
+    // Delete from Supabase in bulk
+    const uuidIds = ids.filter((id) => id.includes('-') && id.length > 20);
+    if (uuidIds.length > 0) {
+      await bulkDeleteUsersFromSupabase(uuidIds);
     }
   };
 
@@ -744,6 +761,24 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     if (uuidIds.length > 0) {
       await bulkUpdateVerificationInSupabase(uuidIds, status);
     }
+  };
+
+  const forceReloadUserPictures = (ids: string[]) => {
+    const ts = Date.now();
+    const updated = users.map((u) => {
+      if (ids.includes(u.id)) {
+        // Remove previous timestamp query if present and attach fresh cache buster
+        const cleanUrl = u.idPhotoUrl.replace(/[?&](t|refresh|bust)=[^&]+/g, '');
+        const sep = cleanUrl.includes('?') ? '&' : '?';
+        const refreshedUrl = `${cleanUrl}${sep}refresh=true&bust=${ts}`;
+        return {
+          ...u,
+          idPhotoUrl: refreshedUrl,
+        };
+      }
+      return u;
+    });
+    saveUsers(updated);
   };
 
   // Ticket operations
@@ -840,10 +875,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         addUser,
         updateUser,
         deleteUser,
+        bulkDeleteUsers,
         toggleViewerVisibility,
         reviewUserStatus,
         bulkReviewUserStatus,
         bulkToggleViewerVisibility,
+        forceReloadUserPictures,
         createTicket,
         replyToTicket,
         addNews,

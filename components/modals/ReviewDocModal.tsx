@@ -1,23 +1,28 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, FileCheck, ExternalLink, Check, CheckCircle2 } from 'lucide-react';
+import { X, FileCheck, ExternalLink, Check, CheckCircle2, RotateCw, Upload } from 'lucide-react';
 import { AppUser, VerificationStatus, formatIdNumber } from '@/lib/types';
-import { DocumentImage } from '@/components/ui/DocumentImage';
+import { DocumentImage } from '@/lib/DocumentImage';
 import { getOriginalDocumentUrl } from '@/lib/documentUtils';
 
 interface ReviewDocModalProps {
     reviewingUser: AppUser | null;
     onClose: () => void;
     onReviewDecision: (userId: string, status: VerificationStatus, notes?: string) => void;
+    onForceReload?: (userId: string) => void;
+    onUpdatePicture?: (userId: string, newPhotoUrl: string) => void;
 }
 
 export const ReviewDocModal: React.FC<ReviewDocModalProps> = ({
     reviewingUser,
     onClose,
     onReviewDecision,
+    onForceReload,
+    onUpdatePicture,
 }) => {
     const [reviewNotes, setReviewNotes] = useState('');
+    const [isReloading, setIsReloading] = useState(false);
 
     useEffect(() => {
         if (reviewingUser) {
@@ -69,22 +74,41 @@ export const ReviewDocModal: React.FC<ReviewDocModalProps> = ({
 
                     {/* ID Photo */}
                     <div>
-                        <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center justify-between mb-1.5">
                             <label className="text-xs font-bold text-slate-700 uppercase">
                                 Fotografía del Documento Adjunto:
                             </label>
-                            {reviewingUser.idPhotoUrl && reviewingUser.idPhotoUrl.startsWith('http') && (
-                                <a
-                                    href={getOriginalDocumentUrl(reviewingUser.idPhotoUrl)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-indigo-600 hover:underline font-bold flex items-center gap-1"
-                                >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                    <span>Abrir en Google Drive</span>
-                                </a>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {onForceReload && (
+                                    <button
+                                        type="button"
+                                        disabled={isReloading}
+                                        onClick={() => {
+                                            setIsReloading(true);
+                                            onForceReload(reviewingUser.id);
+                                            setTimeout(() => setIsReloading(false), 800);
+                                        }}
+                                        className="text-xs text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded font-bold flex items-center gap-1 transition-colors"
+                                        title="Limpiar caché y forzar recarga de la imagen"
+                                    >
+                                        <RotateCw className={`w-3.5 h-3.5 ${isReloading ? 'animate-spin' : ''}`} />
+                                        <span>Forzar Recarga</span>
+                                    </button>
+                                )}
+                                {reviewingUser.idPhotoUrl && reviewingUser.idPhotoUrl.startsWith('http') && (
+                                    <a
+                                        href={getOriginalDocumentUrl(reviewingUser.idPhotoUrl)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-indigo-600 hover:underline font-bold flex items-center gap-1"
+                                    >
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                        <span>Abrir en Google Drive</span>
+                                    </a>
+                                )}
+                            </div>
                         </div>
+
                         <div className="relative aspect-[16/10] w-full bg-slate-100 rounded-xl overflow-hidden border-2 border-slate-300">
                             <DocumentImage
                                 src={reviewingUser.idPhotoUrl}
@@ -93,6 +117,32 @@ export const ReviewDocModal: React.FC<ReviewDocModalProps> = ({
                                 showOpenButton={true}
                             />
                         </div>
+
+                        {onUpdatePicture && (
+                            <div className="mt-2 flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs">
+                                <span className="text-slate-600 font-medium">¿La imagen no es correcta o no carga?</span>
+                                <label className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded font-bold cursor-pointer transition-colors shadow-xs">
+                                    <Upload className="w-3.5 h-3.5" />
+                                    <span>Subir Nueva Foto</span>
+                                    <input
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                const reader = new FileReader();
+                                                reader.onload = () => {
+                                                    const dataUrl = reader.result as string;
+                                                    onUpdatePicture(reviewingUser.id, dataUrl);
+                                                };
+                                                reader.readAsDataURL(file);
+                                            }
+                                        }}
+                                    />
+                                </label>
+                            </div>
+                        )}
                     </div>
 
                     {/* Admin Note Input */}

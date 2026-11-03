@@ -13,7 +13,7 @@ import {
   Check,
   AlertCircle
 } from 'lucide-react';
-import { useApp } from '@/components/context/AppContext';
+import { useApp } from '@/components/auth/AppContext';
 import { formatIdNumber } from '@/lib/types';
 
 export const EmailConfirmationModal = () => {
@@ -202,11 +202,10 @@ export const EmailConfirmationModal = () => {
             {/* Resend Status Banner */}
             {resendStatus && (
               <div
-                className={`p-3 rounded-lg text-xs flex items-center gap-2 border ${
-                  resendStatus.success
+                className={`p-3 rounded-lg text-xs flex items-center gap-2 border ${resendStatus.success
                     ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
                     : 'bg-red-50 border-red-200 text-red-800'
-                }`}
+                  }`}
               >
                 {resendStatus.success ? (
                   <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -223,19 +222,18 @@ export const EmailConfirmationModal = () => {
                 type="button"
                 onClick={handleResend}
                 disabled={isResending || cooldown > 0}
-                className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 ${
-                  cooldown > 0
+                className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 ${cooldown > 0
                     ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
                     : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-sm'
-                }`}
+                  }`}
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isResending ? 'animate-spin text-[#d9251d]' : ''}`} />
                 <span>
                   {isResending
                     ? 'Reenviando...'
                     : cooldown > 0
-                    ? `Reenviar en (${cooldown}s)`
-                    : 'Reenviar Correo de Confirmación'}
+                      ? `Reenviar en (${cooldown}s)`
+                      : 'Reenviar Correo de Confirmación'}
                 </span>
               </button>
 

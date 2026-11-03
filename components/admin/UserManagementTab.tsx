@@ -24,9 +24,10 @@ import {
     ChevronLeft,
     ChevronRight,
     ChevronsRight,
+    RotateCw,
 } from 'lucide-react';
 import { AppUser, UserRole, VerificationStatus, formatIdNumber } from '@/lib/types';
-import { DocumentImage } from '@/components/ui/DocumentImage';
+import { DocumentImage } from '@/lib/DocumentImage';
 
 type SortOption =
     | 'name-asc'
@@ -41,10 +42,12 @@ interface UserManagementTabProps {
     users: AppUser[];
     setEditingUser: (user: AppUser) => void;
     deleteUser: (id: string) => void;
+    bulkDeleteUsers?: (ids: string[]) => Promise<void>;
     toggleViewerVisibility: (id: string) => void;
     reviewUserStatus: (id: string, status: VerificationStatus, notes?: string) => void;
     bulkReviewUserStatus: (ids: string[], status: VerificationStatus, notes?: string) => void;
     bulkToggleViewerVisibility: (ids: string[], visible: boolean) => void;
+    forceReloadUserPictures?: (ids: string[]) => void;
     onSelectUserForReview: (user: AppUser) => void;
 }
 
@@ -52,9 +55,11 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
     users,
     setEditingUser,
     deleteUser,
+    bulkDeleteUsers,
     toggleViewerVisibility,
     bulkReviewUserStatus,
     bulkToggleViewerVisibility,
+    forceReloadUserPictures,
     onSelectUserForReview,
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -65,6 +70,19 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState<number>(25);
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+
+    // Mass / Single Deletion Confirmation Modal State
+    const [deleteModalState, setDeleteModalState] = useState<{
+        isOpen: boolean;
+        targetIds: string[];
+        confirmText: string;
+        isDeleting: boolean;
+    }>({
+        isOpen: false,
+        targetIds: [],
+        confirmText: '',
+        isDeleting: false,
+    });
 
     const totalUsers = users.length;
     const pendingReviews = users.filter((u) => u.status === 'pendiente').length;
@@ -168,6 +186,47 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
         if (selectedUserIds.length === 0) return;
         bulkToggleViewerVisibility(selectedUserIds, visible);
         handleClearSelection();
+    };
+
+    const handleOpenDeleteModal = (targetIds: string[]) => {
+        setDeleteModalState({
+            isOpen: true,
+            targetIds,
+            confirmText: '',
+            isDeleting: false,
+        });
+    };
+
+    const handleExecuteDelete = async () => {
+        if (deleteModalState.confirmText.trim().toUpperCase() !== 'ELIMINAR') {
+            return;
+        }
+
+        setDeleteModalState((prev) => ({ ...prev, isDeleting: true }));
+
+        try {
+            if (deleteModalState.targetIds.length === 1) {
+                deleteUser(deleteModalState.targetIds[0]);
+            } else if (bulkDeleteUsers) {
+                await bulkDeleteUsers(deleteModalState.targetIds);
+            } else {
+                for (const id of deleteModalState.targetIds) {
+                    deleteUser(id);
+                }
+            }
+
+            // Remove deleted users from selection if they were selected
+            setSelectedUserIds((prev) => prev.filter((id) => !deleteModalState.targetIds.includes(id)));
+            setDeleteModalState({
+                isOpen: false,
+                targetIds: [],
+                confirmText: '',
+                isDeleting: false,
+            });
+        } catch (err) {
+            console.error('Error deleting users:', err);
+            setDeleteModalState((prev) => ({ ...prev, isDeleting: false }));
+        }
     };
 
     const toggleSort = (type: 'name' | 'id' | 'status' | 'date') => {
@@ -297,6 +356,18 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
+                            {forceReloadUserPictures && (
+                                <button
+                                    onClick={() => {
+                                        forceReloadUserPictures(selectedUserIds);
+                                    }}
+                                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg shadow flex items-center gap-1.5 transition-colors cursor-pointer"
+                                    title="Forzar actualización y descarga limpia de fotos para los usuarios seleccionados"
+                                >
+                                    <RotateCw className="w-3.5 h-3.5" />
+                                    <span>Recargar Fotos ({selectedUserIds.length})</span>
+                                </button>
+                            )}
                             <button onClick={() => handleBulkStatusChange('aprobado')} className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow">
                                 Aprobar Cédulas
                             </button>
@@ -305,6 +376,14 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             </button>
                             <button onClick={() => handleBulkViewerVisibility(true)} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow">
                                 Hacer Visibles
+                            </button>
+                            <button
+                                onClick={() => handleOpenDeleteModal(selectedUserIds)}
+                                className="px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-lg shadow flex items-center gap-1.5 transition-colors cursor-pointer"
+                                title="Eliminar masivamente los usuarios seleccionados"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Eliminar ({selectedUserIds.length})</span>
                             </button>
                             <button onClick={handleClearSelection} className="px-2.5 py-1.5 text-xs text-slate-300 hover:text-white">
                                 Cancelar
@@ -403,6 +482,15 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                         </td>
                                         <td className="py-3.5 px-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5">
+                                                {forceReloadUserPictures && (
+                                                    <button
+                                                        onClick={() => forceReloadUserPictures([user.id])}
+                                                        className="p-1.5 rounded hover:bg-amber-100 text-amber-700 hover:text-amber-900"
+                                                        title="Recargar Foto de Cédula"
+                                                    >
+                                                        <RotateCw className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                                 <button onClick={() => onSelectUserForReview(user)} className="p-1.5 rounded hover:bg-slate-200 text-slate-600" title="Revisar Cédula">
                                                     <FileCheck className="w-4 h-4" />
                                                 </button>
@@ -410,11 +498,9 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                                     <Edit className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => {
-                                                        if (confirm(`¿Eliminar al usuario ${user.fullName}?`)) deleteUser(user.id);
-                                                    }}
+                                                    onClick={() => handleOpenDeleteModal([user.id])}
                                                     className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-600"
-                                                    title="Eliminar"
+                                                    title="Eliminar Usuario"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
@@ -446,6 +532,105 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                         <button onClick={() => setCurrentPage(totalPages)} disabled={effectivePage >= totalPages} className="p-2 border rounded bg-white disabled:opacity-40">
                             <ChevronsRight className="w-4 h-4" />
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Confirmación Estricta para Eliminación Masiva o Individual */}
+            {deleteModalState.isOpen && (
+                <div className="fixed inset-0 z-[180] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl max-w-md w-full border border-red-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        {/* Header */}
+                        <div className="bg-red-700 text-white p-5 flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <AlertCircle className="w-5 h-5 text-white" />
+                                <h3 className="text-base font-bold">
+                                    {deleteModalState.targetIds.length > 1
+                                        ? `¿Eliminar ${deleteModalState.targetIds.length} Usuarios?`
+                                        : '¿Eliminar Usuario Definitivamente?'}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => setDeleteModalState({ isOpen: false, targetIds: [], confirmText: '', isDeleting: false })}
+                                className="text-red-200 hover:text-white p-1 rounded-lg"
+                                disabled={deleteModalState.isDeleting}
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-4 text-xs text-slate-700">
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-xl space-y-1.5 text-red-900">
+                                <p className="font-bold text-sm text-red-700">⚠️ Esta acción es irreversible.</p>
+                                <p>
+                                    Se eliminarán de forma permanente los perfiles seleccionados, sus datos de contacto, documentos adjuntos, estatus de verificación y registros vinculados en la base de datos de Supabase.
+                                </p>
+                            </div>
+
+                            {/* Summary of affected users */}
+                            <div>
+                                <span className="font-bold uppercase text-[11px] text-slate-500 block mb-1">
+                                    Usuarios que se eliminarán ({deleteModalState.targetIds.length}):
+                                </span>
+                                <div className="max-h-32 overflow-y-auto bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1">
+                                    {users
+                                        .filter((u) => deleteModalState.targetIds.includes(u.id))
+                                        .map((u) => (
+                                            <div key={u.id} className="flex items-center justify-between text-[11px]">
+                                                <span className="font-bold text-slate-800">{u.fullName}</span>
+                                                <span className="font-mono text-slate-500">{formatIdNumber(u)}</span>
+                                            </div>
+                                        ))}
+                                </div>
+                            </div>
+
+                            {/* Safety confirmation input */}
+                            <div className="space-y-1.5 pt-2">
+                                <label className="block font-bold text-slate-800">
+                                    Para confirmar la eliminación, escribe la palabra <span className="text-red-600 font-mono font-black">ELIMINAR</span> a continuación:
+                                </label>
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    value={deleteModalState.confirmText}
+                                    onChange={(e) => setDeleteModalState((prev) => ({ ...prev, confirmText: e.target.value }))}
+                                    placeholder="Escribe ELIMINAR para habilitar el botón"
+                                    disabled={deleteModalState.isDeleting}
+                                    className="w-full p-2.5 bg-slate-50 border-2 border-slate-300 focus:border-red-600 rounded-lg text-slate-900 font-mono font-bold tracking-wider text-sm focus:outline-none"
+                                />
+                            </div>
+
+                            {/* Modal Actions */}
+                            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    disabled={deleteModalState.isDeleting}
+                                    onClick={() => setDeleteModalState({ isOpen: false, targetIds: [], confirmText: '', isDeleting: false })}
+                                    className="px-4 py-2 border border-slate-300 hover:bg-slate-50 rounded-lg font-bold text-slate-700 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={deleteModalState.confirmText.trim().toUpperCase() !== 'ELIMINAR' || deleteModalState.isDeleting}
+                                    onClick={handleExecuteDelete}
+                                    className="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-lg shadow transition-all flex items-center gap-2"
+                                >
+                                    {deleteModalState.isDeleting ? (
+                                        <>
+                                            <RotateCw className="w-4 h-4 animate-spin" />
+                                            <span>Eliminando...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Trash2 className="w-4 h-4" />
+                                            <span>Confirmar y Eliminar Definitivamente</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

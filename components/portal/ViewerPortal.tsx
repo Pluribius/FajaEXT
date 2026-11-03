@@ -21,10 +21,11 @@ import {
   Table as TableIcon,
   Loader2,
   Type,
+  RotateCw,
 } from 'lucide-react';
-import { useApp } from '@/components/context/AppContext';
+import { useApp } from '@/components/auth/AppContext';
 import { getUserUID, formatIdNumber } from '@/lib/types';
-import { DocumentImage } from '@/components/ui/DocumentImage';
+import { DocumentImage } from '@/lib/DocumentImage';
 
 import ExcelJS from 'exceljs';
 
@@ -92,7 +93,7 @@ async function fetchAndCacheImageAsBase64(url: string, maxWidth = 300, maxHeight
 }
 
 export const ViewerPortal = () => {
-  const { currentUser, users } = useApp();
+  const { currentUser, users, forceReloadUserPictures } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<{
     url: string;
@@ -104,12 +105,71 @@ export const ViewerPortal = () => {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
 
-  //Gdrive Cache override button
-  const handleClearImageCache = () => {
-    imageCache.clear();
-    console.log('🧹 [Cache Cleared] In-memory image cache flushed by admin.');
-    alert('¡Caché de imágenes limpiada con éxito! Las próximas visualizaciones y exportaciones descargarán las imágenes más recientes de Google Drive.');
+  // Full Gdrive & Server Cache override button
+  const handleClearImageCache = async () => {
+    if (isClearingCache) return;
+    setIsClearingCache(true);
+
+    try {
+      // 1. Flush in-memory Base64 image cache in browser
+      imageCache.clear();
+      console.log('🧹 [Cache Cleared] Browser in-memory image cache flushed.');
+
+      // 2. Call server-side DELETE endpoint to purge proxy memory & disk cache
+      let serverPurgeMsg = '';
+      try {
+        const res = await fetch('/api/document-image', { method: 'DELETE' });
+        if (res.ok) {
+          const data = await res.json();
+          serverPurgeMsg = data.message || `Archivos de caché en disco eliminados.`;
+        }
+      } catch (err) {
+        console.warn('Could not contact /api/document-image DELETE endpoint:', err);
+      }
+
+      // 3. Force reload picture URLs with fresh cache-busting timestamp for all currently loaded users
+      if (forceReloadUserPictures && users.length > 0) {
+        forceReloadUserPictures(users.map((u) => u.id));
+      }
+
+      // 4. Actively re-download and pre-cache pictures in the background for smooth display
+      const approvedWithPhotos = users.filter((u) => u.visibleToViewers && u.idPhotoUrl);
+      console.log(`📥 [Re-download] Initiating fresh download for ${approvedWithPhotos.length} approved documents...`);
+      let successCount = 0;
+
+      // Download in parallel batches of 6 to prevent overwhelming the browser
+      const batchSize = 6;
+      for (let i = 0; i < approvedWithPhotos.length; i += batchSize) {
+        const batch = approvedWithPhotos.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(async (u) => {
+            try {
+              // Ensure we fetch with refresh=true
+              const sep = u.idPhotoUrl.includes('?') ? '&' : '?';
+              const freshUrl = `${u.idPhotoUrl}${sep}refresh=true&t=${Date.now()}`;
+              await fetchAndCacheImageAsBase64(freshUrl, 300, 180);
+              successCount++;
+            } catch (fetchErr) {
+              console.warn(`Failed downloading refreshed picture for ${u.fullName}:`, fetchErr);
+            }
+          })
+        );
+      }
+
+      alert(
+        `¡Caché de imágenes limpiada y reconstruida exitosamente!\n\n` +
+        `• Servidor: ${serverPurgeMsg || 'Caché de disco eliminada'}\n` +
+        `• Navegador: Memoria limpia y URLs actualizadas\n` +
+        `• Imágenes redescargadas desde Google Drive: ${successCount} de ${approvedWithPhotos.length}`
+      );
+    } catch (err: any) {
+      console.error('Error executing cache override:', err);
+      alert(`Error al limpiar la caché: ${err?.message || 'Error desconocido'}`);
+    } finally {
+      setIsClearingCache(false);
+    }
   };
 
   // Configuration for toggling elements and text sizing in official reports
@@ -464,11 +524,13 @@ export const ViewerPortal = () => {
                 {/* 🧹 Cache Override Button */}
                 <button
                   type="button"
+                  disabled={isClearingCache}
                   onClick={handleClearImageCache}
-                  className="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
-                  title="Fuerza la recarga de imágenes desde Google Drive en la próxima exportación o vista"
+                  className="px-3.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                  title="Fuerza la purga de caché en disco y redescarga todas las imágenes directamente desde Google Drive"
                 >
-                  <span>🧹 Limpiar Caché</span>
+                  <RotateCw className={`w-3.5 h-3.5 text-amber-700 ${isClearingCache ? 'animate-spin' : ''}`} />
+                  <span>{isClearingCache ? 'Purgando y Redescargando...' : '🧹 Forzar Recarga y Limpiar Caché'}</span>
                 </button>
 
                 <button
@@ -1206,7 +1268,7 @@ export const ViewerPortal = () => {
                     </h2>
                   )}
                   {headerOptions.showSubtitle && (
-                    <div className="text-xs text-slate-500">59a9c75722ea127b9d8089f7ad649a73cbc8e6fb.</div>
+                    <div className="text-xs text-slate-500">8426231108d48965a504d1e9321dcb86b0fd4149.</div>
                   )}
                 </div>
               </div>

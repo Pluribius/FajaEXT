@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const targetUrl = searchParams.get('url');
   const directId = searchParams.get('id');
+  const forceRefresh = searchParams.get('refresh') === 'true' || searchParams.has('t') || searchParams.has('bust');
 
   const fileId = directId || (targetUrl ? extractDriveId(targetUrl) : null);
 
@@ -53,8 +54,21 @@ export async function GET(req: NextRequest) {
   const cacheKeyRaw = fileId ? `drive_${fileId}` : `url_${targetUrl}`;
   const cacheHash = crypto.createHash('sha256').update(cacheKeyRaw).digest('hex');
 
-  // 1. Check in-memory cache
-  if (memoryCache.has(cacheHash)) {
+  const cacheDir = getCacheDir();
+  const binPath = path.join(cacheDir, `${cacheHash}.bin`);
+  const metaPath = path.join(cacheDir, `${cacheHash}.meta.json`);
+
+  // If forceRefresh requested, delete from memory and disk caches
+  if (forceRefresh) {
+    memoryCache.delete(cacheHash);
+    try {
+      if (fs.existsSync(binPath)) fs.unlinkSync(binPath);
+      if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
+    } catch {}
+  }
+
+  // 1. Check in-memory cache (only if not force refreshing)
+  if (!forceRefresh && memoryCache.has(cacheHash)) {
     const item = memoryCache.get(cacheHash)!;
     return new NextResponse(new Uint8Array(item.buffer), {
       status: 200,
@@ -66,32 +80,30 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 2. Check local disk cache
-  const cacheDir = getCacheDir();
-  const binPath = path.join(cacheDir, `${cacheHash}.bin`);
-  const metaPath = path.join(cacheDir, `${cacheHash}.meta.json`);
+  // 2. Check local disk cache (only if not force refreshing)
+  if (!forceRefresh) {
+    try {
+      if (fs.existsSync(binPath) && fs.existsSync(metaPath)) {
+        const meta = JSON.parse(await fs.promises.readFile(metaPath, 'utf-8'));
+        const buffer = await fs.promises.readFile(binPath);
 
-  try {
-    if (fs.existsSync(binPath) && fs.existsSync(metaPath)) {
-      const meta = JSON.parse(await fs.promises.readFile(metaPath, 'utf-8'));
-      const buffer = await fs.promises.readFile(binPath);
+        // Populate memory cache
+        if (memoryCache.size < MAX_MEMORY_ITEMS) {
+          memoryCache.set(cacheHash, { buffer, contentType: meta.contentType || 'image/jpeg' });
+        }
 
-      // Populate memory cache
-      if (memoryCache.size < MAX_MEMORY_ITEMS) {
-        memoryCache.set(cacheHash, { buffer, contentType: meta.contentType || 'image/jpeg' });
+        return new NextResponse(new Uint8Array(buffer), {
+          status: 200,
+          headers: {
+            'Content-Type': meta.contentType || 'image/jpeg',
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'X-Cache': 'HIT-DISK',
+          },
+        });
       }
-
-      return new NextResponse(new Uint8Array(buffer), {
-        status: 200,
-        headers: {
-          'Content-Type': meta.contentType || 'image/jpeg',
-          'Cache-Control': 'public, max-age=31536000, immutable',
-          'X-Cache': 'HIT-DISK',
-        },
-      });
+    } catch {
+      // Disk read failed, fallback to network fetch
     }
-  } catch {
-    // Disk read failed, fallback to network fetch
   }
 
   // 3. Fetch from remote candidates
@@ -158,4 +170,41 @@ export async function GET(req: NextRequest) {
 
   // Fallback to placeholder if not fetchable
   return NextResponse.redirect(new URL('/images/formato vacio rif.png', req.url));
+}
+
+// DELETE: Purge entire document cache or specific IDs
+export async function DELETE(req: NextRequest) {
+  try {
+    // 1. Clear memory cache
+    const memoryCount = memoryCache.size;
+    memoryCache.clear();
+
+    // 2. Clear disk cache directory
+    const cacheDir = getCacheDir();
+    let deletedFiles = 0;
+    if (fs.existsSync(cacheDir)) {
+      const files = await fs.promises.readdir(cacheDir);
+      for (const file of files) {
+        if (file.endsWith('.bin') || file.endsWith('.meta.json')) {
+          try {
+            await fs.promises.unlink(path.join(/*turbopackIgnore: true*/ cacheDir, file));
+            deletedFiles++;
+          } catch {}
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      purgedMemoryItems: memoryCount,
+      purgedDiskFiles: deletedFiles,
+      message: `Caché limpiada exitosamente (${deletedFiles} archivos eliminados de disco).`,
+    });
+  } catch (err: any) {
+    console.error('[API document-image] Error purging cache:', err);
+    return NextResponse.json(
+      { success: false, error: err?.message || 'Error purgando caché' },
+      { status: 500 }
+    );
+  }
 }

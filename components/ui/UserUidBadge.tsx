@@ -14,7 +14,7 @@ import {
   CreditCard,
   Mail
 } from 'lucide-react';
-import { useApp } from '@/components/context/AppContext';
+import { useApp } from '@/components/auth/AppContext';
 import { getUserUID, formatIdNumber } from '@/lib/types';
 
 export const UserUidBadge = () => {
@@ -75,8 +75,8 @@ export const UserUidBadge = () => {
               type="button"
               onClick={handleCopy}
               className={`p-1.5 rounded-lg border text-xs transition-all ${copied
-                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
-                  : 'bg-slate-800/80 hover:bg-slate-700 border-slate-600 text-slate-300 hover:text-white'
+                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                : 'bg-slate-800/80 hover:bg-slate-700 border-slate-600 text-slate-300 hover:text-white'
                 }`}
               title="Copiar UID oficial"
             >

@@ -27,9 +27,9 @@ import {
   RefreshCw,
   AlertCircle,
 } from 'lucide-react';
-import { useApp } from '@/components/context/AppContext';
+import { useApp } from '@/components/auth/AppContext';
 import { SupportTicket, getUserUID } from '@/lib/types';
-import { DocumentImage } from '@/components/ui/DocumentImage';
+import { DocumentImage } from '@/lib/DocumentImage';
 import { getOriginalDocumentUrl } from '@/lib/documentUtils';
 
 export const ClientPortal = () => {

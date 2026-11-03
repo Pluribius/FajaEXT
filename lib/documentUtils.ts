@@ -30,7 +30,7 @@ export function resolveDocumentImageUrl(url: string | null | undefined, forceRef
     return clean;
   }
 
-  const cacheBuster = forceRefresh ? `&t=${Date.now()}` : '';
+  const cacheBuster = forceRefresh ? `&refresh=true&t=${Date.now()}` : '';
 
   // Google Drive files: route through our high-performance document-image proxy
   const driveId = extractDriveId(clean);

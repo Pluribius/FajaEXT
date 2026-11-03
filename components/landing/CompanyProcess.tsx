@@ -3,32 +3,29 @@
 import React from 'react';
 import Image from 'next/image';
 import { ArrowUpRight, ShieldCheck, History, Award, Users } from 'lucide-react';
-import { useApp } from '@/components/context/AppContext';
+import { useApp } from '@/components/auth/AppContext';
 
 export const CompanyGlimpse = () => {
   const { openAuthModal, currentUser, setActiveView } = useApp();
 
   const historyCards = [
     {
-      title: 'Proyecto Hamaca (1990 - 2007)',
-      location: 'Faja Petrolífera del Orinoco',
-      desc: 'Desarrollo de infraestructura de crudo extrapesado liderado por consorcios internacionales (ConocoPhillips, Chevron, Texaco) con miles de técnicos venezolanos.',
-      image: '/images/faja-orinoco.jpg',
-      badge: 'Etapa Operativa Histórica',
+      title: 'Registro de Datos',
+      location: 'Primer Paso',
+      desc: 'Registre sus datos en nuestra pagina, verifique sus datos de contactos y reciba ayuda sobre el proceso de registro.',
+      image: '/images/IDVE.jpg',
     },
     {
-      title: 'Transición y Nacionalización',
-      location: 'Convenios de Asociación y Empresas Mixtas',
-      desc: 'Tras los decretos de nacionalización y la salida de varias multinacionales, quedaron compromisos pendientes de pasivos laborales y beneficios contractuales no finiquitados.',
-      image: '/images/refinery-workers.jpg',
-      badge: 'Quiebre de Relaciones',
+      title: 'Validación de Documentos',
+      location: 'Segundo Paso',
+      desc: 'Cada expediente es analizado y el Historial Laboral es verificado.',
+      image: '/images/BANAVIH.jpg',
     },
     {
-      title: 'Reapertura y Liquidación',
-      location: 'Mecanismo Conjunto PDVSA - Multinacionales',
-      desc: 'Con los nuevos acuerdos energéticos, se activan los canales diplomáticos y jurídicos para el pago de la deuda legítima a favor de los ex-trabajadores calificados.',
-      image: '/images/oil-industry.jpg',
-      badge: 'Fase de Regularización',
+      title: 'Notificación de Pago',
+      location: 'Tercer Paso',
+      desc: 'Personal verificado es notificado sobre sus detalles de pago, fecha y  ubicacion, los soportes de pago necesarios son archivados.',
+      image: '/images/ATM.jpg',
     },
   ];
 
@@ -39,11 +36,9 @@ export const CompanyGlimpse = () => {
         {/* Top Split Header: Bold Headline on Left, Context & Blue Pill Button on Right (Matching Reference Photo) */}
         <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8 mb-14">
           <div className="max-w-xl">
-            <span className="text-xs font-black uppercase tracking-widest text-[#d9251d] mb-2 block">
-              Recuperación de Pasivos Laborales
-            </span>
+
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0e1b29] tracking-tight leading-[1.15]">
-              Compilación y Justicia Laboral en la Faja
+              Proceso de Registro en la lista de Pago
             </h2>
           </div>
 
@@ -51,19 +46,6 @@ export const CompanyGlimpse = () => {
             <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
               Trabajamos de forma voluntaria para consolidar cada expediente individual, verificar la documentación física y construir una base de datos transparente que respalde la entrega oficial ante PDVSA.
             </p>
-            <button
-              onClick={() => {
-                if (currentUser) {
-                  setActiveView('portal');
-                } else {
-                  openAuthModal('register');
-                }
-              }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0060af] hover:bg-[#004e8f] text-white text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg transition-all cursor-pointer"
-            >
-              <span>Ver Requisitos de Inscripción</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
 
@@ -72,7 +54,7 @@ export const CompanyGlimpse = () => {
           {historyCards.map((card, idx) => (
             <div
               key={idx}
-              className="group relative rounded-2xl overflow-hidden aspect-[4/5] bg-slate-900 shadow-xl border border-slate-200 flex flex-col justify-end p-6 transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl"
+              className="group relative rounded-1xl overflow-hidden aspect-[4/5] bg-slate-900 shadow-xl border border-slate-200 flex flex-col justify-end p-6 transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl"
             >
               {/* Background Image */}
               <Image
@@ -88,9 +70,6 @@ export const CompanyGlimpse = () => {
 
               {/* Content */}
               <div className="relative z-10 text-white space-y-2">
-                <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-white/20 backdrop-blur-md border border-white/30 text-white">
-                  {card.badge}
-                </span>
 
                 <h3 className="text-xl sm:text-2xl font-black text-white leading-tight">
                   {card.title}

@@ -1,24 +1,27 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { FileCheck, CheckCircle2, Check, X, RefreshCw } from 'lucide-react';
+import { FileCheck, CheckCircle2, Check, X, RefreshCw, RotateCw } from 'lucide-react';
 import { AppUser, VerificationStatus, formatIdNumber } from '@/lib/types';
-import { DocumentImage } from '@/components/ui/DocumentImage';
-import { ReviewDocModal } from '@/components/admin/modals/ReviewDocModal';
+import { DocumentImage } from '@/lib/DocumentImage';
+import { ReviewDocModal } from '@/components/modals/ReviewDocModal';
 
 interface DocumentReviewTabProps {
     users: AppUser[];
     reviewUserStatus: (id: string, status: VerificationStatus, notes?: string) => void;
     bulkReviewUserStatus: (ids: string[], status: VerificationStatus, notes?: string) => void;
+    forceReloadUserPictures?: (ids: string[]) => void;
 }
 
 export const DocumentReviewTab: React.FC<DocumentReviewTabProps> = ({
     users,
     reviewUserStatus,
     bulkReviewUserStatus,
+    forceReloadUserPictures,
 }) => {
     const [visibleReviewCount, setVisibleReviewCount] = useState<number>(20);
     const [reviewingUser, setReviewingUser] = useState<AppUser | null>(null);
+    const [reloadingId, setReloadingId] = useState<string | null>(null);
     const reviewSentinelRef = useRef<HTMLDivElement | null>(null);
 
     const pendingUsers = useMemo(() => users.filter((u) => u.status === 'pendiente'), [users]);
@@ -91,7 +94,26 @@ export const DocumentReviewTab: React.FC<DocumentReviewTabProps> = ({
                                 <h4 className="text-lg font-bold text-slate-900 mt-1">{u.fullName}</h4>
                                 <div className="text-xs text-slate-500 font-mono">Cédula: {formatIdNumber(u)}</div>
                             </div>
-                            <span className="text-xs text-slate-400 font-mono">{u.createdAt}</span>
+                            <div className="flex flex-col items-end gap-1.5">
+                                <span className="text-xs text-slate-400 font-mono">{u.createdAt}</span>
+                                {forceReloadUserPictures && (
+                                    <button
+                                        type="button"
+                                        disabled={reloadingId === u.id}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setReloadingId(u.id);
+                                            forceReloadUserPictures([u.id]);
+                                            setTimeout(() => setReloadingId(null), 800);
+                                        }}
+                                        className="text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded flex items-center gap-1 transition-colors"
+                                        title="Recargar imagen forzando nueva petición"
+                                    >
+                                        <RotateCw className={`w-3 h-3 ${reloadingId === u.id ? 'animate-spin' : ''}`} />
+                                        <span>Recargar Foto</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {/* Clickable ID photo thumbnail to open inspection modal */}
@@ -153,7 +175,7 @@ export const DocumentReviewTab: React.FC<DocumentReviewTabProps> = ({
                 <div ref={reviewSentinelRef} className="py-6 text-center bg-white rounded-xl border border-dashed border-amber-300 p-6 flex flex-col items-center justify-center gap-2.5">
                     <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
                         <RefreshCw className="w-4 h-4 animate-spin text-amber-600" />
-                        <span>Cargando siguientes 20 cédulas ({displayedPendingUsers.length} de {pendingUsers.length})...[cite: 4]</span>
+                        <span>Cargando siguientes 20 cédulas ({displayedPendingUsers.length} de {pendingUsers.length})</span>
                     </div>
                 </div>
             )}
@@ -163,6 +185,11 @@ export const DocumentReviewTab: React.FC<DocumentReviewTabProps> = ({
                 reviewingUser={reviewingUser}
                 onClose={() => setReviewingUser(null)}
                 onReviewDecision={reviewUserStatus}
+                onForceReload={(userId) => {
+                    if (forceReloadUserPictures) {
+                        forceReloadUserPictures([userId]);
+                    }
+                }}
             />
         </div>
     );

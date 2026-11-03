@@ -1,16 +1,15 @@
 'use client';
 
 import React from 'react';
-import { useApp } from '@/components/context/AppContext';
-import { IndustrialHeader } from '@/components/layout/IndustrialHeader';
-import { IndustrialHero } from '@/components/sections/IndustrialHero';
-import { CompanyGlimpse } from '@/components/sections/CompanyGlimpse';
-import { IndustrialProjects } from '@/components/sections/IndustrialProjects';
-import { IndustrialNews } from '@/components/sections/IndustrialNews';
-import { IndustrialFooter } from '@/components/layout/IndustrialFooter';
+import { useApp } from '@/components/auth/AppContext';
+import { IndustrialHeader } from '@/components/ui/layout/header/IndustrialHeader';
+import { IndustrialHero } from '@/components/landing/IndustrialHero';
+import { CompanyGlimpse } from '@/components/landing/CompanyProcess';
+import { IndustrialProjects } from '@/components/landing/IndustrialRequirements';
+import { IndustrialNews } from '@/components/landing/IndustrialCompanies';
+import { IndustrialFooter } from '@/components/ui/layout/footer/IndustrialFooter';
 import { AuthModal } from '@/components/auth/AuthModal';
-import { VideoModal } from '@/components/ui/VideoModal';
-import { EmailConfirmationModal } from '@/components/ui/EmailConfirmationModal';
+import { EmailConfirmationModal } from '@/components/modals/EmailConfirmationModal';
 import { UserUidBadge } from '@/components/ui/UserUidBadge';
 
 
@@ -84,7 +83,6 @@ export default function Home() {
 
       {/* Global Interactive Modals and Floating Session UID Tab */}
       <AuthModal />
-      <VideoModal />
       <EmailConfirmationModal />
       <UserUidBadge />
     </main>

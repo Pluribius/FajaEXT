@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { Users, FileCheck, MessageSquare, Newspaper } from 'lucide-react';
-import { useApp } from '@/components/context/AppContext';
+import { useApp } from '@/components/auth/AppContext';
 import { AppUser } from '@/lib/types';
 import { AdminMetrics } from '@/components/admin/AdminMetrics';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
 import { DocumentReviewTab } from '@/components/admin/DocumentReviewTab';
 import { SupportTicketsTab } from '@/components/admin/SupportTicketsTab';
 import { NewsPublisherTab } from '@/components/admin/NewsPublisherTab';
-import { EditUserModal } from '@/components/admin/modals/EditUserModal';
-import { ReviewDocModal } from '@/components/admin/modals/ReviewDocModal';
+import { EditUserModal } from '@/components/modals/EditUserModal';
+import { ReviewDocModal } from '@/components/modals/ReviewDocModal';
 
 export const AdminDashboard = () => {
   const {
@@ -22,10 +22,12 @@ export const AdminDashboard = () => {
     refreshSupabaseUsers,
     updateUser,
     deleteUser,
+    bulkDeleteUsers,
     toggleViewerVisibility,
     reviewUserStatus,
     bulkReviewUserStatus,
     bulkToggleViewerVisibility,
+    forceReloadUserPictures,
     replyToTicket,
     addNews,
     deleteNews,
@@ -60,12 +62,13 @@ export const AdminDashboard = () => {
       status: editingUser.status,
       visibleToViewers: editingUser.visibleToViewers,
       notes: editingUser.notes,
+      idPhotoUrl: editingUser.idPhotoUrl,
     });
     setEditingUser(null);
   };
 
   return (
-    <div className="w-full bg-slate-100 min-h-screen pt-24 pb-8">
+    <div className="w-full bg-[#01161e] min-h-screen pt-24 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Metric Overview */}
         <AdminMetrics
@@ -132,10 +135,12 @@ export const AdminDashboard = () => {
             users={users}
             setEditingUser={setEditingUser}
             deleteUser={deleteUser}
+            bulkDeleteUsers={bulkDeleteUsers}
             toggleViewerVisibility={toggleViewerVisibility}
             reviewUserStatus={reviewUserStatus}
             bulkReviewUserStatus={bulkReviewUserStatus}
             bulkToggleViewerVisibility={bulkToggleViewerVisibility}
+            forceReloadUserPictures={forceReloadUserPictures}
             onSelectUserForReview={setReviewingUser}
           />
         )}
@@ -145,6 +150,7 @@ export const AdminDashboard = () => {
             users={users}
             reviewUserStatus={reviewUserStatus}
             bulkReviewUserStatus={bulkReviewUserStatus}
+            forceReloadUserPictures={forceReloadUserPictures}
           />
         )}
 
@@ -175,6 +181,8 @@ export const AdminDashboard = () => {
         reviewingUser={reviewingUser}
         onClose={() => setReviewingUser(null)}
         onReviewDecision={reviewUserStatus}
+        onForceReload={(userId) => forceReloadUserPictures([userId])}
+        onUpdatePicture={(userId, newPhotoUrl) => updateUser(userId, { idPhotoUrl: newPhotoUrl })}
       />
     </div>
   );

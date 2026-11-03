@@ -142,6 +142,19 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    // 5. Update documents table (id_document_url) if idPhotoUrl is specified
+    const idPhotoUrl = body.idPhotoUrl || body.id_document_url;
+    if (idPhotoUrl !== undefined) {
+      for (const id of targetIds) {
+        await supabase
+          .from('documents')
+          .upsert({
+            id,
+            id_document_url: idPhotoUrl,
+          });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       updatedCount: targetIds.length,

@@ -121,6 +121,48 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                         </div>
                     </div>
 
+                    <div className="border-t border-slate-200 pt-3">
+                        <label className="block font-bold text-slate-700 uppercase mb-1">
+                            Foto del Documento / Cédula (Subir o Reemplazar)
+                        </label>
+                        <div className="flex items-center gap-3">
+                            <div className="w-20 h-14 bg-slate-100 rounded-lg overflow-hidden border border-slate-300 shrink-0 relative flex items-center justify-center">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={editingUser.idPhotoUrl || '/images/formato vacio rif.png'}
+                                    alt="Vista previa cédula"
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg cursor-pointer text-xs transition-colors">
+                                    <span>Seleccionar Nueva Imagen</span>
+                                    <input
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                const reader = new FileReader();
+                                                reader.onload = () => {
+                                                    setEditingUser({
+                                                        ...editingUser,
+                                                        idPhotoUrl: reader.result as string,
+                                                    });
+                                                };
+                                                reader.readAsDataURL(file);
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <div className="text-[10px] text-slate-500">
+                                    Admite PNG, JPG o WebP. Se guardará de inmediato en el expediente.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="flex items-center gap-2 pt-2">
                         <input
                             type="checkbox"

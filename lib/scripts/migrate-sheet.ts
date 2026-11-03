@@ -77,13 +77,14 @@ async function runFreshMigration() {
 
         for (const [index, row] of records.entries()) {
             // 1. Encontrar columnas dinámicamente o por posición típica
-            const idKey = Object.keys(row).find(k => k.includes('Cédula de Identidad venezolana') || k.includes('Cédula') || k.includes('cedula'));
+            const idKey = Object.keys(row).find(k => k === 'ID_NUMBER' || k.includes('Cédula') || k.includes('cedula'));
             const emailKey = Object.keys(row).find(k => k.toLowerCase().includes('email') || k.toLowerCase().includes('correo'));
-            const nameKey = Object.keys(row).find(k => k.includes('Nombres y apellidos') || k.includes('Nombre'));
-            const phoneKey = Object.keys(row).find(k => k.includes('Número de teléfono') || k.includes('teléfono'));
-            const docUrlKey = Object.keys(row).find(k => k.includes('Cédula de Identidad actualizada') || k.includes('foto') || k.includes('drive'));
+            const nameKey = Object.keys(row).find(k => k === 'NAME' || k.includes('Nombre') || k.includes('Nombres'));
+            const phoneKey = Object.keys(row).find(k => k === 'PHONE' || k.includes('teléfono') || k.includes('telefono'));
+            const companyKey = Object.keys(row).find(k => k === 'Empresa' || k.toLowerCase().includes('empresa'));
+            const docUrlKey = Object.keys(row).find(k => k === 'ID_PHOTO' || k.includes('PHOTO') || k.includes('drive'));
 
-            // 2. Verificar si CUALQUIER columna de la fila contiene la palabra "migrate" (insensible a mayúsculas)
+            // 2. Verificar si CUALQUIER columna de la fila contiene la palabra "migrate"
             let hasMigrateFlag = false;
             if (REQUIRE_STATUS_MIGRATE) {
                 for (const key of Object.keys(row)) {
@@ -94,7 +95,7 @@ async function runFreshMigration() {
                     }
                 }
             } else {
-                hasMigrateFlag = true; // Si está desactivado el filtro, pasan todos
+                hasMigrateFlag = true;
             }
 
             if (!hasMigrateFlag) {
@@ -102,19 +103,29 @@ async function runFreshMigration() {
                 continue;
             }
 
-            // Extraer valores con respaldo en los índices si los nombres de columnas varían
+            // Extraer valores con respaldo en los índices
             const rawIdNumber = idKey ? row[idKey] : (row[Object.keys(row)[1]] || '');
             const email = emailKey ? row[emailKey]?.trim() : (row[Object.keys(row)[2]] || '').trim();
             const fullName = nameKey ? row[nameKey]?.trim() : (row[Object.keys(row)[3]] || '').trim();
             const phone = phoneKey ? row[phoneKey]?.trim() : '';
+            const company = companyKey ? row[companyKey]?.trim() : '';
 
-            // Buscar una URL de Google Drive válida en la fila para el documento
+            // Buscar documentos en la fila (Foto de ID y comprobantes laborales como RIF, Seguro Social, BANAVIH)
             let idDocumentUrl = '';
+            let workProofUrl = '';
+
             for (const key of Object.keys(row)) {
                 const val = row[key];
                 if (val && typeof val === 'string' && val.includes('drive.google.com')) {
-                    idDocumentUrl = val.trim();
-                    break;
+                    const trimmedVal = val.trim();
+                    // Identificar si es la foto de cédula principal o comprobante de trabajo
+                    if (key.toLowerCase().includes('id_photo') || key.toLowerCase().includes('photo')) {
+                        idDocumentUrl = trimmedVal;
+                    } else if (!idDocumentUrl) {
+                        idDocumentUrl = trimmedVal; // Asignar como ID por defecto si aún está vacío
+                    } else if (!workProofUrl) {
+                        workProofUrl = trimmedVal; // Tomar el primer comprobante adicional (RIF/Seguro/BANAVIH) como work_proof
+                    }
                 }
             }
 
@@ -137,6 +148,8 @@ async function runFreshMigration() {
             console.log(`[${index + 1}/${records.length}] Migrando: ${firstName} ${lastName} (Cédula: ${cleanIdNumber})`);
 
             // 3. Crear usuario en Supabase Auth Admin API
+            // Nota: users_info se llena automáticamente si tienes un trigger en Supabase basado en auth.users, 
+            // pero hacemos upserts explícitos a cada tabla para garantizar que se guarden todos los datos.
             const { data: authData, error: authError } = await supabase.auth.admin.createUser({
                 email: email,
                 password: tempPassword,
@@ -158,22 +171,76 @@ async function runFreshMigration() {
 
             const userId = authData.user.id;
 
-            // 4. Vincular el documento de identidad en la tabla documents
-            if (idDocumentUrl) {
+            // 4. Poblar tabla `users_info` (por si el trigger de auth no está configurado o para actualizar campos)
+            const { error: userInfoError } = await supabase
+                .from('users_info')
+                .upsert({
+                    id: userId,
+                    first_name: firstName,
+                    last_name: lastName,
+                    id_number: cleanIdNumber,
+                    role: 'user',
+                    ID_Type: true
+                });
+
+            if (userInfoError) {
+                console.error(`  ⚠️ Error en users_info para ${email}:`, userInfoError.message);
+            }
+
+            // 5. Poblar tabla `contact_info`
+            const { error: contactError } = await supabase
+                .from('contact_info')
+                .upsert({
+                    id: userId,
+                    email: email,
+                    phone: phone || null
+                });
+
+            if (contactError) {
+                console.error(`  ⚠️ Error en contact_info para ${email}:`, contactError.message);
+            }
+
+            // 6. Poblar tabla `documents`
+            if (idDocumentUrl || workProofUrl) {
                 const { error: docError } = await supabase
                     .from('documents')
                     .upsert({
                         id: userId,
-                        id_document_url: idDocumentUrl
+                        id_document_url: idDocumentUrl || '',
+                        work_proof_url: workProofUrl || null
                     });
 
                 if (docError) {
-                    console.error(`  ⚠️ Error al guardar URL del documento para ${email}:`, docError.message);
-                } else {
-                    console.log(`  └─ 📄 URL de documento vinculada con éxito`);
+                    console.error(`  ⚠️ Error en documents para ${email}:`, docError.message);
                 }
             }
 
+            // 7. Poblar tabla `verification_status` (incluyendo la empresa)
+            const { error: verificationError } = await supabase
+                .from('verification_status')
+                .upsert({
+                    id: userId,
+                    status: 'pending',
+                    company: company || null
+                });
+
+            if (verificationError) {
+                console.error(`  ⚠️ Error en verification_status para ${email}:`, verificationError.message);
+            }
+
+            // 8. Poblar tabla `payment_status`
+            const { error: paymentError } = await supabase
+                .from('payment_status')
+                .upsert({
+                    id: userId,
+                    status: 'pending'
+                });
+
+            if (paymentError) {
+                console.error(`  ⚠️ Error en payment_status para ${email}:`, paymentError.message);
+            }
+
+            console.log(`  └─ ✅ Usuario y relaciones guardadas con éxito.`);
             successCount++;
         }
 
