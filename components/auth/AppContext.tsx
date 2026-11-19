@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { AppUser, SupportTicket, NewsPost, UserRole, VerificationStatus, profileToAppUser, SupabaseProfile } from '@/lib/types';
 import { INITIAL_USERS, INITIAL_NEWS, INITIAL_TICKETS } from '@/lib/mockData';
 import {
@@ -116,20 +117,30 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [confirmationEmailData, setConfirmationEmailData] = useState<EmailConfirmationData | null>(null);
-  const [activeView, setActiveViewState] = useState<'landing' | 'portal'>('landing');
   const [adminSubView, setAdminSubView] = useState<'dashboard' | 'viewer'>('dashboard');
 
   // Supabase status
   const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [isSupabaseLoading, setIsSupabaseLoading] = useState(true);
 
-  // Helper to persist and change view
-  const setActiveView = (view: 'landing' | 'portal') => {
-    setActiveViewState(view);
-    try {
-      localStorage.setItem(ACTIVE_VIEW_KEY, view);
-    } catch {}
-  };
+  // Next.js routing synchronization
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Active view derived dynamically from the current Next.js route path
+  const activeView: 'landing' | 'portal' = pathname?.startsWith('/dashboard') ? 'portal' : 'landing';
+
+  // Helper to navigate between views using Next.js routes
+  const setActiveView = useCallback(
+    (view: 'landing' | 'portal') => {
+      if (view === 'portal') {
+        router.push('/dashboard');
+      } else {
+        router.push('/landing');
+      }
+    },
+    [router]
+  );
 
   // Load from localStorage on mount (Session Persistence)
   useEffect(() => {
@@ -155,16 +166,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.setItem(NEWS_STORAGE_KEY, JSON.stringify(INITIAL_NEWS));
       }
 
-      // Restore user session and last active view
+      // Restore user session
       const storedCurrent = localStorage.getItem(CURRENT_USER_KEY);
-      const storedView = localStorage.getItem(ACTIVE_VIEW_KEY);
       if (storedCurrent) {
         const parsedUser: AppUser = JSON.parse(storedCurrent);
         setCurrentUser(parsedUser);
-        // Automatically restore user into their portal view!
-        setActiveViewState((storedView as any) || 'portal');
-      } else if (storedView) {
-        setActiveViewState(storedView as any);
       }
     } catch (e) {
       console.error('Error loading data from localStorage', e);
@@ -204,15 +210,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     if (user) {
       try {
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-        localStorage.setItem(ACTIVE_VIEW_KEY, 'portal');
       } catch {}
-      setActiveViewState('portal');
     } else {
       try {
         localStorage.removeItem(CURRENT_USER_KEY);
-        localStorage.setItem(ACTIVE_VIEW_KEY, 'landing');
       } catch {}
-      setActiveViewState('landing');
     }
   }, []);
 
@@ -594,6 +596,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       await supabase.auth.signOut();
     } catch {}
     saveCurrentUser(null);
+    setActiveView('landing');
   };
 
   const quickSwitchRole = (role: UserRole) => {
