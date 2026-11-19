@@ -238,6 +238,30 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           } catch {}
           return merged;
         });
+
+        // Keep currentUser updated with latest role / verification status from Supabase
+        setCurrentUser((current) => {
+          if (!current) return null;
+          const fresh = sbUsers.find(
+            (u) =>
+              u.id === current.id ||
+              (Boolean(u.email && current.email) && u.email.toLowerCase() === current.email.toLowerCase())
+          );
+          if (
+            fresh &&
+            (fresh.role !== current.role ||
+              fresh.status !== current.status ||
+              fresh.fullName !== current.fullName ||
+              fresh.idPhotoUrl !== current.idPhotoUrl)
+          ) {
+            const updatedCurrent = { ...current, ...fresh };
+            try {
+              localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurrent));
+            } catch {}
+            return updatedCurrent;
+          }
+          return current;
+        });
       }
     } catch (err) {
       console.warn('[Supabase] Initial load error:', err);
@@ -342,6 +366,13 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           createdAt: u.created_at ? u.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
         };
         saveCurrentUser(sessionUser);
+
+        // Fetch fresh database profile so latest role from users_info table applies immediately
+        getProfileById(u.id).then((profile) => {
+          if (profile) {
+            saveCurrentUser(profile);
+          }
+        });
       }
     });
 

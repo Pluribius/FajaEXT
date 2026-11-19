@@ -84,10 +84,17 @@ export function supabaseJoinedToAppUser(row: SupabaseUserInfoJoined): AppUser {
 
   const email = row.contact_info?.email || '';
   const emailLower = email.toLowerCase();
+  const rawRole = (row.role || '').toLowerCase().trim();
   let role: UserRole = 'client';
-  if (row.role === 'admin' || emailLower.includes('admin')) {
+  if (rawRole === 'admin' || rawRole === 'administrador' || emailLower.includes('admin')) {
     role = 'admin';
-  } else if (row.role === 'viewer' || emailLower.includes('visor') || emailLower.includes('auditor')) {
+  } else if (
+    rawRole === 'viewer' ||
+    rawRole === 'visor' ||
+    rawRole === 'auditor' ||
+    emailLower.includes('visor') ||
+    emailLower.includes('auditor')
+  ) {
     role = 'viewer';
   }
 

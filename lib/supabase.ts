@@ -101,6 +101,25 @@ export async function getProfileById(id: string): Promise<AppUser | null> {
         .maybeSingle();
 
       if (error || !data) {
+        // Fallback: fetch via service-role endpoint if client direct query was blocked by RLS or relation limits
+        if (typeof window !== 'undefined') {
+          try {
+            const res = await fetch('/api/admin/users', { cache: 'no-store' });
+            if (res.ok) {
+              const json = await res.json();
+              if (json.success && Array.isArray(json.users)) {
+                const found = json.users.find((u: AppUser) => u.id === id);
+                if (found) {
+                  profileCache.set(id, { data: found, timestamp: now });
+                  return found;
+                }
+              }
+            }
+          } catch (fetchErr) {
+            console.warn('[Supabase] Fallback fetch failed:', fetchErr);
+          }
+        }
+
         profileCache.set(id, { data: null, timestamp: now });
         return null;
       }

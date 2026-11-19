@@ -93,7 +93,26 @@ export async function PATCH(req: NextRequest) {
     // 2. Update users_info (role, ID_Type, id_number, first_name, last_name)
     const userInfoUpdates: any = {};
     if (role) {
-      userInfoUpdates.role = role === 'admin' ? 'admin' : role === 'viewer' ? 'viewer' : 'user';
+      const normalizedRole = String(role).toLowerCase().trim();
+      const authRole =
+        normalizedRole === 'admin' || normalizedRole === 'administrador'
+          ? 'admin'
+          : normalizedRole === 'viewer' || normalizedRole === 'visor' || normalizedRole === 'auditor'
+          ? 'viewer'
+          : 'client';
+
+      userInfoUpdates.role = authRole;
+
+      // Sync auth.users user_metadata as well so Supabase session JWT matches
+      for (const id of targetIds) {
+        try {
+          await supabase.auth.admin.updateUserById(id, {
+            user_metadata: { role: authRole },
+          });
+        } catch (authErr) {
+          console.warn('[API Admin Users] Warning updating auth metadata for user', id, authErr);
+        }
+      }
     }
     if (idType !== undefined) {
       userInfoUpdates.ID_Type = Boolean(idType);
