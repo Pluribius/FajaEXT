@@ -343,35 +343,47 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       }
     });
 
-    // Supabase auth state change listener
+    // Supabase auth state change listener (triggers on sign in, tab focus, or token refresh)
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
         const u = session.user;
-        const meta = u.user_metadata || {};
-        const fullName =
-          meta.first_name && meta.last_name
-            ? `${meta.first_name} ${meta.last_name}`
-            : meta.full_name || u.email?.split('@')[0] || 'Usuario';
 
-        const sessionUser: AppUser = {
-          id: u.id,
-          fullName,
-          email: u.email || '',
-          phone: meta.phone || '',
-          idNumber: meta.id_number || '000000',
-          idPhotoUrl: meta.id_photo_url || '/images/formato vacio rif.png',
-          role: (meta.role as UserRole) || (u.email?.includes('admin') ? 'admin' : u.email?.includes('visor') ? 'viewer' : 'client'),
-          status: 'aprobado',
-          visibleToViewers: true,
-          createdAt: u.created_at ? u.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-        };
-        saveCurrentUser(sessionUser);
+        // 1. Fetch official profile from database first so true role is never downgraded
+        const profile = await getProfileById(u.id);
+        if (profile) {
+          saveCurrentUser(profile);
+          return;
+        }
 
-        // Fetch fresh database profile so latest role from users_info table applies immediately
-        getProfileById(u.id).then((profile) => {
-          if (profile) {
-            saveCurrentUser(profile);
+        // 2. Fallback: only set default session if user is not already in active memory
+        setCurrentUser((current) => {
+          if (current && current.id === u.id) {
+            return current;
           }
+
+          const meta = u.user_metadata || {};
+          const fullName =
+            meta.first_name && meta.last_name
+              ? `${meta.first_name} ${meta.last_name}`
+              : meta.full_name || u.email?.split('@')[0] || 'Usuario';
+
+          const sessionUser: AppUser = {
+            id: u.id,
+            fullName,
+            email: u.email || '',
+            phone: meta.phone || '',
+            idNumber: meta.id_number || '000000',
+            idPhotoUrl: meta.id_photo_url || '/images/formato vacio rif.png',
+            role: (meta.role as UserRole) || (u.email?.includes('admin') ? 'admin' : u.email?.includes('visor') ? 'viewer' : 'client'),
+            status: 'aprobado',
+            visibleToViewers: true,
+            createdAt: u.created_at ? u.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          };
+
+          try {
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(sessionUser));
+          } catch {}
+          return sessionUser;
         });
       }
     });
