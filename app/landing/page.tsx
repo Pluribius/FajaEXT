@@ -1,31 +1,15 @@
 'use client';
 
-import React from 'react';
-import { IndustrialHero } from '@/components/landing/IndustrialHero';
-import { CompanyGlimpse } from '@/components/landing/CompanyProcess';
-import { IndustrialProjects } from '@/components/landing/IndustrialRequirements';
-import { IndustrialNews } from '@/components/landing/IndustrialCompanies';
-import { IndustrialFooter } from '@/components/ui/layout/footer/IndustrialFooter';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import HomePage from '../home/page';
 
 export default function LandingPage() {
-  return (
-    <div className="flex-1 flex flex-col">
-      {/* Hero Section */}
-      <section id="hero">
-        <IndustrialHero />
-      </section>
+  const router = useRouter();
 
-      {/* Section 2: Glimpse to our company & 4 Industrial Cards */}
-      <CompanyGlimpse />
+  useEffect(() => {
+    router.replace('/home');
+  }, [router]);
 
-      {/* Section 3: Operational Projects & Infrastructure */}
-      <IndustrialProjects />
-
-      {/* Section 4: Live Official News & Bulletins */}
-      <IndustrialNews />
-
-      {/* Footer */}
-      <IndustrialFooter />
-    </div>
-  );
+  return <HomePage />;
 }

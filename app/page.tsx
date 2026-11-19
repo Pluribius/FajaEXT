@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/components/auth/AppContext';
-import LandingPage from './landing/page';
+import HomePage from './home/page';
 
 export default function RootPage() {
   const { currentUser, isSupabaseLoading } = useApp();
@@ -11,13 +11,17 @@ export default function RootPage() {
 
   useEffect(() => {
     if (!isSupabaseLoading) {
-      if (currentUser) {
+      if (!currentUser) {
+        router.replace('/home');
+      } else if (currentUser.role === 'admin') {
         router.replace('/dashboard');
+      } else if (currentUser.role === 'viewer') {
+        router.replace('/export');
       } else {
-        router.replace('/landing');
+        router.replace('/user');
       }
     }
   }, [currentUser, isSupabaseLoading, router]);
 
-  return <LandingPage />;
+  return <HomePage />;
 }

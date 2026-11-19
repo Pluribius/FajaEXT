@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { LogOut, LayoutDashboard } from 'lucide-react';
+import { LogOut, LayoutDashboard, Home } from 'lucide-react';
 import { AppUser } from '@/lib/types';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface HeaderActionsProps {
     currentUser: AppUser | null;
@@ -15,22 +16,49 @@ interface HeaderActionsProps {
 
 export const HeaderActions: React.FC<HeaderActionsProps> = ({
     currentUser,
-    activeView,
-    setActiveView,
     logout,
     openAuthModal,
 }) => {
+    const router = useRouter();
+    const pathname = usePathname();
+    const isLanding = pathname === '/home' || pathname === '/landing' || pathname === '/';
+
+    const handlePortalToggle = () => {
+        if (isLanding) {
+            if (currentUser?.role === 'admin') router.push('/dashboard');
+            else if (currentUser?.role === 'viewer') router.push('/export');
+            else router.push('/user');
+        } else {
+            router.push('/home');
+        }
+    };
+
     return (
         <div className="hidden sm:flex items-center gap-3 min-h-[44px]">
             {currentUser ? (
                 <div className="flex items-center gap-3">
                     {/* Go to Main Page / Portal Button */}
                     <button
-                        onClick={() => setActiveView(activeView === 'portal' ? 'landing' : 'portal')}
+                        onClick={handlePortalToggle}
                         className="px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200"
                     >
-                        <LayoutDashboard className="w-4 h-4 text-[#d9251d]" />
-                        <span>{activeView === 'portal' ? 'Ver Página Principal' : 'Ir a Mi Portal'}</span>
+                        {isLanding ? (
+                            <>
+                                <LayoutDashboard className="w-4 h-4 text-[#d9251d]" />
+                                <span>
+                                    {currentUser.role === 'admin'
+                                        ? 'Ir al Dashboard'
+                                        : currentUser.role === 'viewer'
+                                        ? 'Ir a Exportar'
+                                        : 'Ir a Mi Portal'}
+                                </span>
+                            </>
+                        ) : (
+                            <>
+                                <Home className="w-4 h-4 text-[#d9251d]" />
+                                <span>Ver Página Principal</span>
+                            </>
+                        )}
                     </button>
 
                     {/* User Badge & Logout */}

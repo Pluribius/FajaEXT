@@ -11,7 +11,7 @@ interface HeaderLogoProps {
 
 export const HeaderLogo: React.FC<HeaderLogoProps> = ({ scrolled, setActiveView }) => (
     <Link
-        href="/landing"
+        href="/home"
         onClick={() => setActiveView('landing')}
         className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 group cursor-pointer shadow-sm bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200"
     >

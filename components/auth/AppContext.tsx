@@ -128,18 +128,25 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   // Active view derived dynamically from the current Next.js route path
-  const activeView: 'landing' | 'portal' = pathname?.startsWith('/dashboard') ? 'portal' : 'landing';
+  const activeView: 'landing' | 'portal' =
+    pathname === '/home' || pathname === '/landing' || pathname === '/' ? 'landing' : 'portal';
 
   // Helper to navigate between views using Next.js routes
   const setActiveView = useCallback(
     (view: 'landing' | 'portal') => {
       if (view === 'portal') {
-        router.push('/dashboard');
+        if (currentUser?.role === 'admin') {
+          router.push('/dashboard');
+        } else if (currentUser?.role === 'viewer') {
+          router.push('/export');
+        } else {
+          router.push('/user');
+        }
       } else {
-        router.push('/landing');
+        router.push('/home');
       }
     },
-    [router]
+    [router, currentUser]
   );
 
   // Load from localStorage on mount (Session Persistence)
@@ -420,7 +427,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       if (found) {
         saveCurrentUser(found);
         setIsAuthModalOpen(false);
-        setActiveView('portal');
+        if (found.role === 'admin') router.push('/dashboard');
+        else if (found.role === 'viewer') router.push('/export');
+        else router.push('/user');
         return { success: true };
       }
     }
@@ -463,7 +472,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
           saveCurrentUser(loggedInUser);
           setIsAuthModalOpen(false);
-          setActiveView('portal');
+          if (loggedInUser.role === 'admin') router.push('/dashboard');
+          else if (loggedInUser.role === 'viewer') router.push('/export');
+          else router.push('/user');
           return { success: true };
         }
       } catch (err) {
@@ -479,7 +490,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       }
       saveCurrentUser(found);
       setIsAuthModalOpen(false);
-      setActiveView('portal');
+      if (found.role === 'admin') router.push('/dashboard');
+      else if (found.role === 'viewer') router.push('/export');
+      else router.push('/user');
       return { success: true };
     }
 
@@ -587,7 +600,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setIsAuthModalOpen(false);
 
     // Direct entry to portal without email confirmation step
-    setActiveView('portal');
+    router.push('/user');
     return { success: true };
   };
 
@@ -596,14 +609,16 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       await supabase.auth.signOut();
     } catch {}
     saveCurrentUser(null);
-    setActiveView('landing');
+    router.push('/home');
   };
 
   const quickSwitchRole = (role: UserRole) => {
     const matched = users.find((u) => u.role === role);
     if (matched) {
       saveCurrentUser(matched);
-      setActiveView('portal');
+      if (role === 'admin') router.push('/dashboard');
+      else if (role === 'viewer') router.push('/export');
+      else router.push('/user');
     }
   };
 
