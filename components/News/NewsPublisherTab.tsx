@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { NewsPost } from '@/lib/types';
-import { CreateNewsModal } from '@/components/modals/CreateNewsModal';
+import { CreateNewsModal } from '@/components/News/CreateNewsModal';
 
 interface NewsPublisherTabProps {
     news: NewsPost[];

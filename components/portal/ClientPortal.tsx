@@ -15,22 +15,24 @@ import {
   FileText,
   Calendar,
   CheckCircle2,
-  ChevronRight,
   Eye,
   X,
   ExternalLink,
-  Sparkles,
   Lock,
-  KeyRound,
   Copy,
   Check,
   RefreshCw,
-  AlertCircle,
+  SlidersHorizontal,
+  ChevronRight,
+  Shield,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 import { useApp } from '@/components/auth/AppContext';
-import { SupportTicket, getUserUID } from '@/lib/types';
+import { SupportTicket, getUserUID, formatIdNumber } from '@/lib/types';
 import { DocumentImage } from '@/lib/DocumentImage';
 import { getOriginalDocumentUrl } from '@/lib/documentUtils';
+import ContourLines from '@/components/ui/ContourLines';
 
 export const ClientPortal = () => {
   const {
@@ -44,7 +46,7 @@ export const ClientPortal = () => {
     updateUser,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'perfil' | 'noticias' | 'soporte'>('perfil');
+  const [activeTab, setActiveTab] = useState<'resumen' | 'documento' | 'noticias' | 'soporte'>('resumen');
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [selectedPhotoModal, setSelectedPhotoModal] = useState<string | null>(null);
 
@@ -58,6 +60,7 @@ export const ClientPortal = () => {
   // Password update state
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ success: boolean; text: string } | null>(null);
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
 
@@ -74,6 +77,11 @@ export const ClientPortal = () => {
   if (!currentUser) return null;
 
   const idPrefix = currentUser.idType === false || (currentUser as any).ID_Type === false ? 'E' : 'V';
+  const myTickets = tickets.filter(
+    (t) =>
+      t.userId === currentUser.id ||
+      (t.userEmail && currentUser.email && t.userEmail.toLowerCase() === currentUser.email.toLowerCase())
+  );
 
   const handleCopyUid = () => {
     const uid = getUserUID(currentUser);
@@ -83,7 +91,7 @@ export const ClientPortal = () => {
   };
 
   const handleIdTypeChange = async (newType: boolean) => {
-    await updateUser(currentUser.id, { idType: newType }); // ✅ Use idType only
+    await updateUser(currentUser.id, { idType: newType });
   };
 
   const handleResendEmail = async () => {
@@ -118,28 +126,21 @@ export const ClientPortal = () => {
     setEmailMsg(null);
     const res = await changeEmail(newEmail);
     setIsSubmittingEmail(false);
+    setEmailMsg({
+      success: res.success,
+      text: res.message || res.error || (res.success ? 'Correo actualizado con éxito.' : 'Error al actualizar el correo.'),
+    });
 
     if (res.success) {
-      setIsEditingEmail(false);
       setNewEmail('');
-      setEmailMsg({
-        success: true,
-        text: res.message || `Correo actualizado a ${newEmail}. Se ha reenviado la confirmación al nuevo buzón.`,
-      });
-    } else {
-      setEmailMsg({
-        success: false,
-        text: res.error || 'Error al actualizar el correo.',
-      });
+      setIsEditingEmail(false);
     }
   };
 
   const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPassword || newPassword.length < 6) {
-      setPasswordMsg({ success: false, text: 'La contraseña debe tener al menos 6 caracteres.' });
-      return;
-    }
+    if (!newPassword || newPassword.length < 6 || isSubmittingPassword) return;
+
     if (newPassword !== confirmPassword) {
       setPasswordMsg({ success: false, text: 'Las contraseñas no coinciden.' });
       return;
@@ -149,25 +150,17 @@ export const ClientPortal = () => {
     setPasswordMsg(null);
     const res = await changePassword(newPassword);
     setIsSubmittingPassword(false);
+    setPasswordMsg({
+      success: res.success,
+      text: res.message || res.error || (res.success ? 'Contraseña actualizada con éxito.' : 'Error al cambiar contraseña.'),
+    });
 
     if (res.success) {
       setNewPassword('');
       setConfirmPassword('');
-      setPasswordMsg({
-        success: true,
-        text: res.message || 'Contraseña actualizada correctamente.',
-      });
-    } else {
-      setPasswordMsg({
-        success: false,
-        text: res.error || 'No se pudo actualizar la contraseña.',
-      });
+      setIsEditingPassword(false);
     }
   };
-
-
-  // Filter only tickets belonging to THIS user
-  const myTickets = tickets.filter((t) => t.userId === currentUser.id);
 
   const handleTicketSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,612 +182,665 @@ export const ClientPortal = () => {
     }, 1500);
   };
 
+  // Progress computation
+  const isApproved = currentUser.status === 'aprobado';
+  const isPending = currentUser.status === 'pendiente';
+  const progressPercent = isApproved ? 100 : isPending ? 65 : 40;
+
   return (
-    <div className="w-full bg-slate-50 min-h-screen py-10">
-      <div className="max-w-7xl mx-auto px-6">
+    <div className="relative w-full min-h-screen text-slate-100 flex flex-col font-sans overflow-x-clip pb-12">
+      {/* Background Animated Contour Lines */}
+      <div className="fixed inset-0 -z-10 pointer-events-none">
+        <ContourLines bgColor="#030a13" lineColor="#00b4d8" />
+        <div className="absolute inset-0 bg-[#030a13]/70 backdrop-blur-[1px]" />
+      </div>
 
-        {/* Welcome Header */}
-        <div className="bg-[#0e1b29] text-white rounded-2xl p-6 sm:p-8 mb-8 shadow-xl border-b-4 border-[#d9251d] relative overflow-hidden">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-black uppercase tracking-wider text-[#d9251d] bg-white/10 px-2.5 py-0.5 rounded">
-                  Portal Exclusivo de Cliente
+      <div className="relative z-10 w-full max-w-[1440px] mx-auto px-3 sm:px-5 py-4 space-y-3.5">
+
+        {/* Condensed Header Bar (MarineTraffic Style) */}
+        <div className="bg-[#0b1622]/95 border border-slate-700/60 rounded-xl p-3 sm:p-4 shadow-sm backdrop-blur-md">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            {/* Left: Entity Name, Flags & Chips */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#10b981]" />
+              
+              <div className="flex items-center gap-2">
+                <span className="text-base sm:text-lg font-black text-white tracking-tight uppercase">
+                  {currentUser.fullName}
                 </span>
-                <span className="text-xs text-slate-300">
-                  ID: {currentUser.id}
+                <span className="text-xs px-2 py-0.5 rounded font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                  {formatIdNumber(currentUser)}
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black">
-                Hola, {currentUser.fullName}
-              </h1>
-              <p className="text-slate-300 text-xs sm:text-sm mt-1">
-                Bienvenido a tu espacio personal. Aquí solo tú puedes consultar tus datos certificados, ver comunicados y solicitar soporte técnico.
-              </p>
-            </div>
 
-            {/* Verification Status Badge */}
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 p-4 rounded-xl flex items-center gap-3 shrink-0">
-              {currentUser.status === 'aprobado' ? (
-                <>
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                    <ShieldCheck className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase font-bold text-emerald-400">
-                      Documento Aprobado
-                    </div>
-                    <div className="text-sm font-black text-white">
-                      Identidad Verificada
-                    </div>
-                  </div>
-                </>
-              ) : currentUser.status === 'pendiente' ? (
-                <>
-                  <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                    <Clock className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase font-bold text-amber-400">
-                      En Revisión Oficial
-                    </div>
-                    <div className="text-sm font-black text-white">
-                      Cédula en Validación
-                    </div>
-                  </div>
-                </>
+              {/* Status Badge */}
+              {isApproved ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Aprobado / Certificado</span>
+                </span>
+              ) : isPending ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                  <Clock className="w-3 h-3" />
+                  <span>En Validación Oficial</span>
+                </span>
               ) : (
-                <>
-                  <div className="w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center">
-                    <AlertTriangle className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase font-bold text-red-400">
-                      Documento Observado
-                    </div>
-                    <div className="text-sm font-black text-white">
-                      Requiere Actualización
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Selection */}
-        <div className="flex border-b border-slate-200 mb-8 bg-white rounded-t-xl p-1 shadow-sm">
-          <button
-            onClick={() => setActiveTab('perfil')}
-            className={`flex-1 py-3 px-4 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'perfil'
-              ? 'bg-[#0e1b29] text-white shadow-md'
-              : 'text-slate-600 hover:text-[#0e1b29] hover:bg-slate-100'
-              }`}
-          >
-            <User className="w-4 h-4" />
-            <span>Mis Datos Personales</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('noticias')}
-            className={`flex-1 py-3 px-4 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'noticias'
-              ? 'bg-[#0e1b29] text-white shadow-md'
-              : 'text-slate-600 hover:text-[#0e1b29] hover:bg-slate-100'
-              }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Noticias y Comunicados ({news.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('soporte')}
-            className={`flex-1 py-3 px-4 text-xs sm:text-sm font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'soporte'
-              ? 'bg-[#0e1b29] text-white shadow-md'
-              : 'text-slate-600 hover:text-[#0e1b29] hover:bg-slate-100'
-              }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>Tickets de Soporte ({myTickets.length})</span>
-          </button>
-        </div>
-
-        {/* TAB 1: PERSONAL DATA & ID PHOTO */}
-        {activeTab === 'perfil' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
-            {/* Left: Formatted Personal Details */}
-            <div className="lg:col-span-7 bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                <h3 className="text-lg font-black text-[#0e1b29]">
-                  Ficha de Registro Personal Certificada
-                </h3>
-                <span className="text-xs text-slate-400 font-mono">
-                  Registrado: {currentUser.createdAt}
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-red-500/15 text-red-400 border border-red-500/30">
+                  <AlertTriangle className="w-3 h-3" />
+                  <span>Observado</span>
                 </span>
-              </div>
-
-              {currentUser.status === 'pendiente' && (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="block font-bold">Documentación en Proceso de Verificación:</strong>
-                    Tu cédula de identidad y foto adjunta están siendo validadas por el personal de seguridad administrativa. Te llegará una notificación cuando sea aprobada formalmente.
-                  </div>
-                </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-[#d9251d]" />
-                    Nombre Completo Legal
-                  </div>
-                  <div className="text-sm font-black text-slate-900">
-                    {currentUser.fullName}
-                  </div>
-                </div>
-
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <CreditCard className="w-3.5 h-3.5 text-[#d9251d]" />
-                      Tipo y Cédula de Identidad
-                    </span>
-                    <select
-                      value={idPrefix}
-                      onChange={(e) => handleIdTypeChange(e.target.value === 'V')}
-                      className="px-2 py-0.5 bg-white border border-slate-300 rounded text-xs font-bold text-indigo-700 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#d9251d]"
-                      title="Cambiar tipo de ID (V / E)"
-                    >
-                      <option value="V">V (Venezolano)</option>
-                      <option value="E">E (Extranjero)</option>
-                    </select>
-                  </div>
-                  <div className="text-sm font-mono font-black text-slate-900 mt-1">
-                    {idPrefix}-{currentUser.idNumber}
-                  </div>
-                </div>
-
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-[#d9251d]" />
-                    Correo Electrónico
-                  </div>
-                  <div className="text-sm font-bold text-slate-900 truncate">
-                    {currentUser.email}
-                  </div>
-                </div>
-
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-[#d9251d]" />
-                    Teléfono de Contacto
-                  </div>
-                  <div className="text-sm font-bold text-slate-900">
-                    {currentUser.phone}
-                  </div>
-                </div>
-              </div>
-
-              {currentUser.notes && (
-                <div className="p-4 bg-slate-100 rounded-lg border border-slate-200 text-xs text-slate-600">
-                  <strong className="text-slate-800 block mb-1">Notas Administrativas:</strong>
-                  {currentUser.notes}
-                </div>
-              )}
-            </div>
-
-            {/* Right: Uploaded ID Document Card */}
-            <div className="lg:col-span-5 bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h4 className="text-base font-black text-[#0e1b29]">
-                  Fotografía de Cédula Subida
-                </h4>
-                <button
-                  onClick={() => setSelectedPhotoModal(currentUser.idPhotoUrl)}
-                  className="text-xs font-bold text-[#d9251d] hover:underline flex items-center gap-1"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  Ampliar
-                </button>
-              </div>
-
-              <div
-                onClick={() => setSelectedPhotoModal(currentUser.idPhotoUrl)}
-                className="relative aspect-[16/10] w-full rounded-lg overflow-hidden border-2 border-slate-200 bg-slate-100 cursor-pointer group hover:border-[#d9251d] transition-all"
-              >
-                <DocumentImage
-                  src={currentUser.idPhotoUrl}
-                  alt="Documento de Identidad"
-                  objectFit="cover"
-                  showOpenButton={true}
-                  className="group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-2 pointer-events-none">
-                  <Eye className="w-5 h-5" />
-                  <span>Click para ver en tamaño completo</span>
-                </div>
-              </div>
-
-              <div className="text-xs text-slate-500 space-y-1">
-                <div className="flex justify-between">
-                  <span>Documento verificado:</span>
-                  <span className="font-semibold text-slate-800">Cédula Oficial</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Número cotejado:</span>
-                  <span className="font-mono font-semibold text-slate-800">{idPrefix}-{currentUser.idNumber}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Official UID Control Card */}
-            <div className="lg:col-span-12 bg-gradient-to-r from-[#0e1b29] to-[#1a2f47] text-white rounded-xl p-6 border-b-4 border-[#d9251d] shadow-md flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#d9251d]/20 border border-[#d9251d] flex items-center justify-center text-[#d9251d]">
-                  <ShieldCheck className="w-7 h-7" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] uppercase tracking-widest text-[#d9251d] font-bold">
-                      Control Gubernamental Certificado
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      ACTIVO
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                    <span>UID: {getUserUID(currentUser)}</span>
-                  </h3>
-                  <p className="text-xs text-slate-300">
-                    Identificador único para reportes, auditorías en garitas y convenios de la Faja del Orinoco.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleCopyUid}
-                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg border border-slate-600 text-xs font-bold transition-all flex items-center gap-2 shadow-sm"
-              >
-                {copiedUid ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-slate-300" />}
-                <span>{copiedUid ? '¡UID Copiado al Portapapeles!' : 'Copiar UID de Control'}</span>
-              </button>
-            </div>
-
-            {/* Account Security & Access Settings */}
-            <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-8">
-
-              {/* Card 1: Change Email & Resend Verification */}
-              <div className="bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-5">
-                <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-                  <div className="w-9 h-9 rounded-lg bg-[#d9251d]/10 text-[#d9251d] flex items-center justify-center">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-base font-black text-[#0e1b29]">
-                      Gestión de Correo Electrónico
-                    </h4>
-                    <span className="text-xs text-slate-500">
-                      Actualiza tu correo y reenvía el enlace de verificación
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Correo Actual Registrado:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleResendEmail}
-                      disabled={isSubmittingEmail || resendCooldown > 0}
-                      className={`text-xs font-bold flex items-center gap-1.5 px-2.5 py-1 rounded transition-colors ${resendCooldown > 0
-                        ? 'text-slate-400 bg-slate-200 cursor-not-allowed'
-                        : 'text-[#d9251d] hover:bg-red-50 bg-white border border-red-200'
-                        }`}
-                    >
-                      <RefreshCw className={`w-3 h-3 ${isSubmittingEmail ? 'animate-spin' : ''}`} />
-                      <span>{resendCooldown > 0 ? `Reenviar (${resendCooldown}s)` : 'Reenviar Verificación'}</span>
-                    </button>
-                  </div>
-                  <div className="font-mono text-sm font-bold text-slate-900">
-                    {currentUser.email}
-                  </div>
-                </div>
-
-                {emailMsg && (
-                  <div
-                    className={`p-3 rounded-lg text-xs flex items-center gap-2 border ${emailMsg.success
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                      : 'bg-red-50 border-red-200 text-red-800'
-                      }`}
-                  >
-                    {emailMsg.success ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                    )}
-                    <span>{emailMsg.text}</span>
-                  </div>
-                )}
-
-                {!isEditingEmail ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewEmail(currentUser.email);
-                      setIsEditingEmail(true);
-                      setEmailMsg(null);
-                    }}
-                    className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs uppercase tracking-wider rounded-lg border border-slate-300 transition-colors"
-                  >
-                    ✏️ Cambiar Dirección de Correo Electrónico
-                  </button>
-                ) : (
-                  <form onSubmit={handleChangeEmailSubmit} className="space-y-3 pt-2">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Nuevo Correo Electrónico *
-                      </label>
-                      <input
-                        type="email"
-                        value={newEmail}
-                        onChange={(e) => setNewEmail(e.target.value)}
-                        placeholder="tu-nuevo-correo@ejemplo.com"
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#d9251d]"
-                        required
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="submit"
-                        disabled={isSubmittingEmail}
-                        className="flex-1 py-2.5 bg-[#d9251d] hover:bg-[#b81c15] text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow transition-all flex items-center justify-center gap-1.5"
-                      >
-                        {isSubmittingEmail ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                        <span>Guardar y Reenviar Verificación</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingEmail(false)}
-                        className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-
-              {/* Card 2: Change Password */}
-              <div className="bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-5">
-                <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-                  <div className="w-9 h-9 rounded-lg bg-[#0e1b29]/10 text-[#0e1b29] flex items-center justify-center">
-                    <KeyRound className="w-5 h-5 text-[#0e1b29]" />
-                  </div>
-                  <div>
-                    <h4 className="text-base font-black text-[#0e1b29]">
-                      Seguridad y Contraseña
-                    </h4>
-                    <span className="text-xs text-slate-500">
-                      Actualiza tu clave de acceso al portal corporativo
-                    </span>
-                  </div>
-                </div>
-
-                <form onSubmit={handleChangePasswordSubmit} className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Nueva Contraseña *
-                    </label>
-                    <div className="relative">
-                      <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Mínimo 6 caracteres"
-                        className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0e1b29]"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Confirmar Nueva Contraseña *
-                    </label>
-                    <div className="relative">
-                      <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repite la nueva contraseña"
-                        className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0e1b29]"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {passwordMsg && (
-                    <div
-                      className={`p-3 rounded-lg text-xs flex items-center gap-2 border ${passwordMsg.success
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        : 'bg-red-50 border-red-200 text-red-800'
-                        }`}
-                    >
-                      {passwordMsg.success ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      ) : (
-                        <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                      )}
-                      <span>{passwordMsg.text}</span>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={isSubmittingPassword}
-                    className="w-full py-2.5 bg-[#0e1b29] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow transition-all flex items-center justify-center gap-1.5 mt-2"
-                  >
-                    {isSubmittingPassword ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
-                    <span>Actualizar Contraseña de Acceso</span>
-                  </button>
-                </form>
-              </div>
-
-            </div>
-
-          </div>
-        )}
-
-        {/* TAB 2: NEWS UPDATES FROM ADMIN */}
-        {activeTab === 'noticias' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-black text-[#0e1b29]">
-                Boletines y Comunicados Recientes
-              </h3>
-              <span className="text-xs text-slate-500">
-                Actualizado en tiempo real por el equipo de administración
+              <span className="text-[11px] font-mono text-slate-400 hidden md:inline">
+                UID: <strong className="text-slate-200">{getUserUID(currentUser)}</strong>
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {news.map((n) => (
-                <div
-                  key={n.id}
-                  className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
-                >
-                  <div className="relative h-44 w-full bg-slate-200">
-                    <Image
-                      src={n.imageUrl || '/images/campo-petrolero-1068x712.jpg'}
-                      alt={n.title}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute top-3 left-3 bg-[#0e1b29] text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                      {n.category}
-                    </div>
+            {/* Right: Action Buttons Strip */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopyUid}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                title="Copiar Código UID"
+              >
+                {copiedUid ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                <span className="hidden sm:inline">{copiedUid ? 'Copiado' : 'Copiar UID'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsEditingEmail(!isEditingEmail)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border ${
+                  isEditingEmail
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-slate-800/90 hover:bg-slate-700 text-slate-200 border-slate-700'
+                }`}
+              >
+                <Mail className="w-3.5 h-3.5 text-slate-400" />
+                <span className="hidden sm:inline">Correo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsEditingPassword(!isEditingPassword)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border ${
+                  isEditingPassword
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-slate-800/90 hover:bg-slate-700 text-slate-200 border-slate-700'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                <span className="hidden sm:inline">Seguridad</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsTicketModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#d9251d] hover:bg-[#b81c15] text-white shadow transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Crear Ticket</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Integrated Navigation Tabs Strip */}
+          <div className="flex items-center gap-1 border-t border-slate-800/80 pt-2.5 mt-3 overflow-x-auto text-xs">
+            <button
+              onClick={() => setActiveTab('resumen')}
+              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer ${
+                activeTab === 'resumen'
+                  ? 'bg-white/10 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              Ficha & Expediente
+            </button>
+
+            <button
+              onClick={() => setActiveTab('documento')}
+              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer ${
+                activeTab === 'documento'
+                  ? 'bg-white/10 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              Cédula Digitalizada
+            </button>
+
+            <button
+              onClick={() => setActiveTab('noticias')}
+              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'noticias'
+                  ? 'bg-white/10 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <span>Noticias Oficiales</span>
+              {news.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-indigo-500 text-white">
+                  {news.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('soporte')}
+              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'soporte'
+                  ? 'bg-white/10 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <span>Tickets de Soporte</span>
+              {myTickets.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500 text-slate-950">
+                  {myTickets.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Inline Modals for Email and Password updates */}
+        {isEditingEmail && (
+          <div className="bg-[#0b1622]/95 border border-indigo-500/40 rounded-xl p-4 shadow-lg backdrop-blur-md">
+            <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                Actualizar Dirección de Correo Electrónico
+              </span>
+              <button onClick={() => setIsEditingEmail(false)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleChangeEmailSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              <input
+                type="email"
+                placeholder={currentUser.email}
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                required
+              />
+              <button
+                type="submit"
+                disabled={isSubmittingEmail}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+              >
+                {isSubmittingEmail ? 'Guardando...' : 'Guardar Nuevo Correo'}
+              </button>
+              <button
+                type="button"
+                onClick={handleResendEmail}
+                disabled={resendCooldown > 0 || isSubmittingEmail}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-lg transition-colors whitespace-nowrap border border-slate-700 cursor-pointer disabled:opacity-50"
+              >
+                {resendCooldown > 0 ? `Reenviar en ${resendCooldown}s` : 'Reenviar Confirmación'}
+              </button>
+            </form>
+            {emailMsg && (
+              <p className={`text-xs mt-2 ${emailMsg.success ? 'text-emerald-400' : 'text-red-400'}`}>
+                {emailMsg.text}
+              </p>
+            )}
+          </div>
+        )}
+
+        {isEditingPassword && (
+          <div className="bg-[#0b1622]/95 border border-indigo-500/40 rounded-xl p-4 shadow-lg backdrop-blur-md">
+            <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                Cambio de Contraseña de Acceso
+              </span>
+              <button onClick={() => setIsEditingPassword(false)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleChangePasswordSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <input
+                type="password"
+                placeholder="Nueva Contraseña (mín 6 car.)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Confirmar Contraseña"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                required
+              />
+              <button
+                type="submit"
+                disabled={isSubmittingPassword}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+              >
+                {isSubmittingPassword ? 'Actualizando...' : 'Actualizar Contraseña'}
+              </button>
+            </form>
+            {passwordMsg && (
+              <p className={`text-xs mt-2 ${passwordMsg.success ? 'text-emerald-400' : 'text-red-400'}`}>
+                {passwordMsg.text}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* TAB 1: RESUMEN & EXPEDIENTE (The Condensed Telemetry Grid) */}
+        {activeTab === 'resumen' && (
+          <div className="space-y-3.5">
+            {/* Voyage / Expediente Progress Card (MarineTraffic Signature Element) */}
+            <div className="bg-[#0b1622]/90 border border-slate-700/60 rounded-xl p-3.5 sm:p-4 shadow-sm backdrop-blur-md">
+              <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Progreso de Validación del Expediente
+                </span>
+                <span className="text-xs font-mono font-bold text-emerald-400">
+                  {progressPercent}% Completado
+                </span>
+              </div>
+
+              {/* Step Bar Track */}
+              <div className="relative py-2">
+                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    style={{ width: `${progressPercent}%` }}
+                    className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 rounded-full transition-all duration-500"
+                  />
+                </div>
+
+                {/* Milestone Markers */}
+                <div className="grid grid-cols-4 text-center mt-3 gap-2">
+                  <div className="flex flex-col items-center">
+                    <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[10px] font-black">✓</span>
+                    <span className="text-[11px] font-bold text-slate-200 mt-1">1. Registro</span>
+                    <span className="text-[10px] text-slate-500">{currentUser.createdAt}</span>
                   </div>
 
-                  <div className="p-5 flex-1 flex flex-col justify-between">
-                    <div>
-                      <div className="text-[11px] text-slate-400 mb-2 flex items-center gap-2">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {n.date} • {n.author}
-                      </div>
-                      <h4 className="text-base font-bold text-[#0e1b29] leading-snug mb-2">
-                        {n.title}
-                      </h4>
-                      <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                        {n.content}
-                      </p>
+                  <div className="flex flex-col items-center">
+                    <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[10px] font-black">✓</span>
+                    <span className="text-[11px] font-bold text-slate-200 mt-1">2. Cédula Adjunta</span>
+                    <span className="text-[10px] text-slate-500">Digitalizada</span>
+                  </div>
+
+                  <div className="flex flex-col items-center">
+                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${
+                      isApproved ? 'bg-emerald-500 text-slate-950' : 'bg-amber-500 text-slate-950 animate-pulse'
+                    }`}>
+                      {isApproved ? '✓' : '•'}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-200 mt-1">3. Auditoría</span>
+                    <span className="text-[10px] text-slate-500">{isApproved ? 'Certificada' : 'En Cola'}</span>
+                  </div>
+
+                  <div className="flex flex-col items-center">
+                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${
+                      isApproved ? 'bg-emerald-500 text-slate-950 shadow-[0_0_8px_#10b981]' : 'bg-slate-700 text-slate-400'
+                    }`}>
+                      {isApproved ? '✓' : '4'}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-200 mt-1">4. Acta Convenio</span>
+                    <span className="text-[10px] text-slate-500">{isApproved ? 'Nómina Oficial' : 'Pendiente'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Dense 3-Column Information Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+              
+              {/* Column 1: Ficha Técnica del Titular (General Specs Table) */}
+              <div className="lg:col-span-5 bg-[#0b1622]/90 border border-slate-700/60 rounded-xl p-3.5 sm:p-4 shadow-sm backdrop-blur-md flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                      Ficha Técnica del Titular
+                    </span>
+                    <User className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+
+                  {/* Dense Key-Value Rows */}
+                  <div className="divide-y divide-slate-800/60 text-xs">
+                    <div className="py-2 flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Nombre Legal:</span>
+                      <span className="font-bold text-white text-right">{currentUser.fullName}</span>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 text-[11px] font-semibold text-[#d9251d]">
-                      Comunicado Interno Oficial
+                    <div className="py-2 flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Tipo de Documento:</span>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={idPrefix}
+                          onChange={(e) => handleIdTypeChange(e.target.value === 'V')}
+                          className="px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-[11px] font-bold text-indigo-400 focus:outline-none"
+                        >
+                          <option value="V">V (Venezolana)</option>
+                          <option value="E">E (Extranjera)</option>
+                        </select>
+                        <span className="font-mono font-bold text-white">{currentUser.idNumber}</span>
+                      </div>
+                    </div>
+
+                    <div className="py-2 flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Teléfono Móvil:</span>
+                      <span className="font-mono text-slate-200">{currentUser.phone || 'No registrado'}</span>
+                    </div>
+
+                    <div className="py-2 flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Correo Registrado:</span>
+                      <span className="font-mono text-slate-200 truncate max-w-[200px]" title={currentUser.email}>
+                        {currentUser.email}
+                      </span>
+                    </div>
+
+                    <div className="py-2 flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Lote Asignado:</span>
+                      <span className="font-bold text-indigo-300 font-mono">
+                        {currentUser.batchId || 'Lote Inicial 01'}
+                      </span>
+                    </div>
+
+                    <div className="py-2 flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Código UID Token:</span>
+                      <span className="font-mono text-[11px] text-emerald-400 font-black">
+                        {getUserUID(currentUser)}
+                      </span>
+                    </div>
+
+                    <div className="py-2 flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Fecha de Registro:</span>
+                      <span className="text-slate-300 font-mono text-[11px]">{currentUser.createdAt}</span>
+                    </div>
+
+                    <div className="py-2 flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Estatus en Nómina:</span>
+                      <span className={`text-[11px] font-black uppercase ${isApproved ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {currentUser.status}
+                      </span>
                     </div>
                   </div>
                 </div>
-              ))}
+
+                <div className="mt-3 pt-2.5 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>Auditoría Acta Convenio</span>
+                  <span className="text-slate-300 font-mono">Activo</span>
+                </div>
+              </div>
+
+              {/* Column 2: Cédula de Identidad Digitalizada (Vessel Photo Style) */}
+              <div className="lg:col-span-4 bg-[#0b1622]/90 border border-slate-700/60 rounded-xl p-3.5 sm:p-4 shadow-sm backdrop-blur-md flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                      Cédula Digitalizada
+                    </span>
+                    <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+
+                  {/* Photo Preview Container */}
+                  <div className="relative w-full h-44 bg-slate-950/80 rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center group">
+                    <DocumentImage
+                      src={currentUser.idPhotoUrl}
+                      alt={currentUser.fullName}
+                      fill
+                      className="object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+                    />
+
+                    {/* Overlay Action Buttons */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPhotoModal(currentUser.idPhotoUrl)}
+                        className="px-3 py-1.5 bg-[#d9251d] text-white text-xs font-bold rounded-lg shadow flex items-center gap-1.5 cursor-pointer hover:bg-[#b81c15]"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Zoom</span>
+                      </button>
+
+                      {getOriginalDocumentUrl(currentUser.idPhotoUrl) && (
+                        <a
+                          href={getOriginalDocumentUrl(currentUser.idPhotoUrl)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg shadow flex items-center gap-1.5 cursor-pointer hover:bg-slate-700 border border-slate-600"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Original</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Sub-table below photo */}
+                  <div className="divide-y divide-slate-800/60 text-xs mt-3">
+                    <div className="py-1.5 flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Tipo de Documento:</span>
+                      <span className="text-slate-200 font-bold">{idPrefix === 'V' ? 'Cédula Venezolana' : 'Cédula Extranjera'}</span>
+                    </div>
+                    <div className="py-1.5 flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Identificador:</span>
+                      <span className="text-white font-mono font-bold">{currentUser.idNumber}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedPhotoModal(currentUser.idPhotoUrl)}
+                  className="w-full mt-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Inspeccionar Imagen Completa</span>
+                </button>
+              </div>
+
+              {/* Column 3: Resumen de Seguridad & Auditoría */}
+              <div className="lg:col-span-3 bg-[#0b1622]/90 border border-slate-700/60 rounded-xl p-3.5 sm:p-4 shadow-sm backdrop-blur-md flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                      Auditoría & Seguridad
+                    </span>
+                    <Shield className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {/* Status Box */}
+                    <div className={`p-2.5 rounded-lg border text-xs ${
+                      isApproved
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                        : isPending
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                        : 'bg-red-500/10 border-red-500/30 text-red-300'
+                    }`}>
+                      <div className="font-bold flex items-center gap-1.5">
+                        {isApproved ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                        <span>{isApproved ? 'Expediente Verificado' : 'Revisión en Proceso'}</span>
+                      </div>
+                      <p className="text-[11px] mt-1 opacity-90 leading-tight">
+                        {isApproved
+                          ? 'Tu expediente se encuentra certificado en la base de datos de auditoría externa para nómina.'
+                          : 'Tus documentos están siendo validados por el equipo administrativo.'}
+                      </p>
+                    </div>
+
+                    {/* Notes if available */}
+                    {currentUser.notes && (
+                      <div className="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800 text-[11px] text-slate-300">
+                        <strong className="block text-slate-400 uppercase text-[10px]">Nota de Auditoría:</strong>
+                        {currentUser.notes}
+                      </div>
+                    )}
+
+                    {/* Quick Ticket Summary */}
+                    <div className="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800 text-xs">
+                      <div className="flex justify-between items-center text-slate-400 text-[11px] mb-1">
+                        <span>Tickets de Soporte:</span>
+                        <strong className="text-white">{myTickets.length}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('soporte')}
+                        className="text-indigo-400 hover:text-indigo-300 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        Ver historial de tickets →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsTicketModalOpen(true)}
+                    className="w-full py-1.5 bg-[#d9251d] hover:bg-[#b81c15] text-white text-xs font-bold uppercase rounded-lg shadow transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Reportar o Consultar</span>
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         )}
 
-        {/* TAB 3: SUPPORT TICKETS */}
-        {activeTab === 'soporte' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* TAB 2: DOCUMENTO COMPLETO */}
+        {activeTab === 'documento' && (
+          <div className="bg-[#0b1622]/90 border border-slate-700/60 rounded-xl p-4 shadow-sm backdrop-blur-md space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div>
-                <h3 className="text-xl font-black text-[#0e1b29]">
-                  Mis Tickets de Soporte
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Inspección de Cédula de Identidad
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Crea solicitudes para asistencia técnica, documentación, accesos a planta o facturación.
+                <p className="text-xs text-slate-400">
+                  Vista oficial digitalizada del documento de identidad cargado en la plataforma.
                 </p>
               </div>
 
+              {getOriginalDocumentUrl(currentUser.idPhotoUrl) && (
+                <a
+                  href={getOriginalDocumentUrl(currentUser.idPhotoUrl)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg border border-slate-700 flex items-center gap-1.5"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Descargar Archivo Original</span>
+                </a>
+              )}
+            </div>
+
+            <div className="w-full min-h-[400px] max-h-[600px] bg-slate-950/80 rounded-xl border border-slate-800 p-4 flex items-center justify-center relative">
+              <DocumentImage
+                src={currentUser.idPhotoUrl}
+                alt={currentUser.fullName}
+                fill
+                className="object-contain"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: NOTICIAS OFICIALES */}
+        {activeTab === 'noticias' && (
+          <div className="bg-[#0b1622]/90 border border-slate-700/60 rounded-xl p-4 shadow-sm backdrop-blur-md space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Comunicados Oficiales & Noticias ({news.length})
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Boletines informativos sobre los avances del censo de la Faja Petrolífera del Orinoco.
+                </p>
+              </div>
+            </div>
+
+            {news.length === 0 ? (
+              <div className="text-center py-10 text-slate-500 text-xs">
+                No hay comunicados publicados actualmente.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {news.map((item) => (
+                  <div key={item.id} className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span className="font-bold text-indigo-400 uppercase tracking-wider">{item.category}</span>
+                      <span>{item.date}</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white">{item.title}</h4>
+                    <p className="text-xs text-slate-300 leading-relaxed">{item.content}</p>
+                    <div className="pt-2 text-[10px] text-slate-500 border-t border-slate-800/80">
+                      Publicado por: {item.author}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 4: TICKETS DE SOPORTE */}
+        {activeTab === 'soporte' && (
+          <div className="bg-[#0b1622]/90 border border-slate-700/60 rounded-xl p-4 shadow-sm backdrop-blur-md space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Mis Tickets de Soporte ({myTickets.length})
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Seguimiento de consultas, reportes técnicos y solicitudes de corrección de datos.
+                </p>
+              </div>
               <button
+                type="button"
                 onClick={() => setIsTicketModalOpen(true)}
-                className="px-5 py-2.5 bg-[#d9251d] hover:bg-[#b81c15] text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow transition-all flex items-center gap-2 self-start cursor-pointer"
+                className="px-3 py-1.5 bg-[#d9251d] hover:bg-[#b81c15] text-white text-xs font-bold uppercase rounded-lg shadow transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                <PlusCircle className="w-4 h-4" />
-                <span>Crear Ticket de Soporte</span>
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Nuevo Ticket</span>
               </button>
             </div>
 
             {myTickets.length === 0 ? (
-              <div className="bg-white rounded-xl p-12 text-center border border-slate-200">
-                <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <h4 className="text-base font-bold text-slate-800 mb-1">
-                  No tienes tickets de soporte activos
-                </h4>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
-                  Si necesitas asistencia con tu documentación, permisos o acceso a plataformas, abre un caso de soporte aquí.
-                </p>
-                <button
-                  onClick={() => setIsTicketModalOpen(true)}
-                  className="px-4 py-2 bg-[#0e1b29] text-white text-xs font-bold uppercase rounded-md shadow"
-                >
-                  Abrir mi Primer Ticket
-                </button>
+              <div className="text-center py-10 text-slate-500 text-xs">
+                No tienes tickets abiertos. Si requieres asistencia o corregir tus datos, haz clic en "Nuevo Ticket".
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {myTickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-xs font-bold bg-slate-100 px-2.5 py-1 rounded text-slate-700">
-                          {ticket.id}
-                        </span>
-                        <h4 className="text-base font-bold text-slate-900">
-                          {ticket.subject}
-                        </h4>
-                      </div>
-
+              <div className="space-y-3">
+                {myTickets.map((t) => (
+                  <div key={t.id} className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">
-                          {ticket.category}
+                        <span className="font-mono text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-bold">
+                          #{t.id.slice(0, 8)}
                         </span>
-                        <span
-                          className={`text-[11px] font-bold px-2.5 py-1 rounded ${ticket.status === 'Resuelto'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : ticket.status === 'En Proceso'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-red-100 text-red-800'
-                            }`}
-                        >
-                          {ticket.status}
+                        <h4 className="font-bold text-white text-sm">{t.subject}</h4>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px]">
+                        <span className="px-2 py-0.5 rounded font-bold bg-slate-800 text-slate-300">
+                          {t.category}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded font-bold ${
+                          t.status === 'Resuelto'
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                        }`}>
+                          {t.status}
                         </span>
                       </div>
                     </div>
-
-                    <p className="text-sm text-slate-700 leading-relaxed">
-                      {ticket.message}
-                    </p>
-
-                    <div className="text-xs text-slate-400">
-                      Fecha de Apertura: {ticket.createdAt}
-                    </div>
-
-                    {/* Admin Response Box if available */}
-                    {ticket.adminReply && (
-                      <div className="mt-3 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                        <div className="flex items-center gap-2 text-xs font-bold text-emerald-900 mb-1">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span>Respuesta del Administrador ({ticket.repliedAt}):</span>
-                        </div>
-                        <p className="text-xs text-emerald-800 leading-relaxed">
-                          {ticket.adminReply}
-                        </p>
+                    <p className="text-slate-300 text-xs leading-relaxed">{t.message}</p>
+                    {t.reply && (
+                      <div className="mt-2 p-2.5 bg-emerald-950/40 border border-emerald-800/40 rounded-lg text-emerald-200">
+                        <strong className="block text-[10px] text-emerald-400 uppercase font-black mb-0.5">
+                          Respuesta de Administración:
+                        </strong>
+                        {t.reply}
                       </div>
                     )}
                   </div>
@@ -806,71 +852,105 @@ export const ClientPortal = () => {
 
       </div>
 
-      {/* CREATE TICKET MODAL */}
-      {isTicketModalOpen && (
-        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden">
-            <div className="bg-[#0e1b29] text-white p-5 flex items-center justify-between border-b-4 border-[#d9251d]">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-[#d9251d]" />
-                <h3 className="text-base font-bold">Crear Ticket de Soporte</h3>
-              </div>
+      {/* Photo Zoom Modal */}
+      {selectedPhotoModal && (
+        <div
+          onClick={() => setSelectedPhotoModal(null)}
+          className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md cursor-pointer animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-3xl w-full bg-[#0b1622] border border-slate-700 rounded-2xl p-4 shadow-2xl cursor-default"
+          >
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                Visualización en Alta Resolución
+              </span>
               <button
-                onClick={() => setIsTicketModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                type="button"
+                onClick={() => setSelectedPhotoModal(null)}
+                className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+            <div className="w-full h-[65vh] bg-slate-950 rounded-xl overflow-hidden border border-slate-800 relative flex items-center justify-center">
+              <DocumentImage
+                src={selectedPhotoModal}
+                alt="Documento en alta resolución"
+                fill
+                className="object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
-            <form onSubmit={handleTicketSubmit} className="p-6 space-y-4">
+      {/* New Ticket Modal */}
+      {isTicketModalOpen && (
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="bg-[#0b1622] border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden text-slate-100">
+            <div className="bg-[#07101a] p-4 flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-[#d9251d]" />
+                <h3 className="text-sm font-bold text-white">Crear Ticket de Soporte</h3>
+              </div>
+              <button
+                onClick={() => setIsTicketModalOpen(false)}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleTicketSubmit} className="p-4 space-y-3">
               {ticketSuccessMsg && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Ticket registrado con éxito. El equipo responderá a la brevedad.</span>
+                <div className="p-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs rounded-lg flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Ticket registrado exitosamente. Te responderemos a la brevedad.</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                  Asunto del Ticket *
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Asunto del Ticket
                 </label>
                 <input
                   type="text"
                   required
+                  placeholder="Ej: Corrección en número de cédula o teléfono"
                   value={ticketSubject}
                   onChange={(e) => setTicketSubject(e.target.value)}
-                  placeholder="Ej. Solicitud de autorización para planta"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#d9251d]"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-[#d9251d]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                     Categoría
                   </label>
                   <select
                     value={ticketCategory}
-                    onChange={(e) => setTicketCategory(e.target.value as SupportTicket['category'])}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#d9251d]"
+                    onChange={(e) => setTicketCategory(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-[#d9251d]"
                   >
-                    <option value="Técnico">Técnico</option>
-                    <option value="Documentación">Documentación</option>
-                    <option value="Operaciones">Operaciones</option>
-                    <option value="Facturación">Facturación</option>
-                    <option value="Otro">Otro</option>
+                    <option value="Técnico">Soporte Técnico</option>
+                    <option value="Validación">Validación de Datos</option>
+                    <option value="Corrección de Cédula">Corrección de Cédula</option>
+                    <option value="Pago / Lote">Consulta de Nómina</option>
+                    <option value="Otro">Otro Asunto</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                     Prioridad
                   </label>
                   <select
                     value={ticketPriority}
-                    onChange={(e) => setTicketPriority(e.target.value as SupportTicket['priority'])}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#d9251d]"
+                    onChange={(e) => setTicketPriority(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-[#d9251d]"
                   >
                     <option value="Baja">Baja</option>
                     <option value="Media">Media</option>
@@ -881,30 +961,30 @@ export const ClientPortal = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                  Descripción Detallada *
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Descripción Detallada
                 </label>
                 <textarea
-                  required
                   rows={4}
+                  required
+                  placeholder="Explica detalladamente tu solicitud..."
                   value={ticketMessage}
                   onChange={(e) => setTicketMessage(e.target.value)}
-                  placeholder="Explica detalladamente la ayuda que requieres..."
-                  className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#d9251d]"
+                  className="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-[#d9251d] resize-none"
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-3">
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsTicketModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 font-bold text-xs uppercase rounded-lg hover:bg-slate-100"
+                  className="px-3 py-1.5 border border-slate-700 text-slate-300 font-bold text-xs uppercase rounded-lg hover:bg-slate-800 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#d9251d] hover:bg-[#b81c15] text-white font-bold text-xs uppercase rounded-lg shadow"
+                  className="px-4 py-1.5 bg-[#d9251d] hover:bg-[#b81c15] text-white font-bold text-xs uppercase rounded-lg shadow cursor-pointer transition-colors"
                 >
                   Enviar Ticket
                 </button>
@@ -913,57 +993,6 @@ export const ClientPortal = () => {
           </div>
         </div>
       )}
-
-      {/* FULL PHOTO ZOOM MODAL */}
-      {selectedPhotoModal && (
-        <div
-          onClick={() => setSelectedPhotoModal(null)}
-          className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md cursor-pointer animate-in fade-in duration-150"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="relative max-w-2xl w-full bg-white rounded-xl p-4 shadow-2xl cursor-default"
-          >
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Documento de Identidad Oficial (Cédula)
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedPhotoModal(null)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="w-full bg-slate-50 rounded-lg overflow-hidden border border-slate-200 p-2 flex items-center justify-center">
-              <DocumentImage
-                src={selectedPhotoModal}
-                alt="Cédula de Identidad en Detalle"
-                objectFit="contain"
-                showOpenButton={true}
-                className="w-full h-auto rounded-lg object-contain max-h-[70vh] shadow-sm"
-              />
-            </div>
-
-            {selectedPhotoModal && selectedPhotoModal.startsWith('http') && (
-              <div className="mt-3 flex justify-end">
-                <a
-                  href={getOriginalDocumentUrl(selectedPhotoModal)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-bold text-indigo-600 hover:underline inline-flex items-center gap-1"
-                >
-                  <span>Abrir en Google Drive</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };

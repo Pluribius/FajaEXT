@@ -3,8 +3,7 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/components/auth/AppContext';
-import { AdminSubNav } from '@/components/admin/AdminSubNav';
-import { NewsPublisherTab } from '@/components/admin/NewsPublisherTab';
+import { NewsPublisherTab } from '@/components/News/NewsPublisherTab';
 
 export default function NewsPage() {
   const { currentUser, isSupabaseLoading, news, addNews, deleteNews } = useApp();
@@ -35,8 +34,6 @@ export default function NewsPage() {
 
   return (
     <div className="w-full bg-[#01161e] min-h-screen flex flex-col">
-      <AdminSubNav />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
         <NewsPublisherTab
           news={news}

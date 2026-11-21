@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { FileCheck, CheckCircle2, Check, X, RefreshCw, RotateCw } from 'lucide-react';
 import { AppUser, VerificationStatus, formatIdNumber } from '@/lib/types';
 import { DocumentImage } from '@/lib/DocumentImage';
-import { ReviewDocModal } from '@/components/modals/ReviewDocModal';
+import { ReviewDocModal } from '@/components/listing/ReviewDocModal';
 
 interface DocumentReviewTabProps {
     users: AppUser[];

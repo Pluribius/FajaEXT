@@ -6,7 +6,6 @@ import { AppProvider } from "@/components/auth/AppContext";
 import { IndustrialHeader } from "@/components/ui/layout/header/IndustrialHeader";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { EmailConfirmationModal } from "@/components/modals/EmailConfirmationModal";
-import { UserUidBadge } from "@/components/ui/UserUidBadge";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -40,7 +39,6 @@ export default function RootLayout({
               </main>
               <AuthModal />
               <EmailConfirmationModal />
-              <UserUidBadge />
             </div>
           </AppProvider>
         </ThemeProvider>

@@ -79,8 +79,8 @@ export function supabaseJoinedToAppUser(row: SupabaseUserInfoJoined): AppUser {
     normStatus === 'aprobado' || normStatus === 'approved' || normStatus === 'verified'
       ? 'aprobado'
       : normStatus === 'rechazado' || normStatus === 'rejected'
-      ? 'rechazado'
-      : 'pendiente';
+        ? 'rechazado'
+        : 'pendiente';
 
   const email = row.contact_info?.email || '';
   const emailLower = email.toLowerCase();
@@ -129,8 +129,8 @@ export function profileToAppUser(profile: SupabaseProfile, defaultRole: UserRole
     normStatus === 'aprobado' || normStatus === 'approved' || normStatus === 'verified'
       ? 'aprobado'
       : normStatus === 'rechazado' || normStatus === 'rejected'
-      ? 'rechazado'
-      : 'pendiente';
+        ? 'rechazado'
+        : 'pendiente';
 
   // Role detection
   let role: UserRole = defaultRole;
@@ -203,3 +203,4 @@ export interface NewsPost {
   author: string;
   important?: boolean;
 }
+

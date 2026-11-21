@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { SupportTicket } from '@/lib/types';
-import { ReplyTicketModal } from '@/components/modals/ReplyTicketModal';
+import { ReplyTicketModal } from '@/components/Tickets/ReplyTicketModal';
 
 interface SupportTicketsTabProps {
     tickets: SupportTicket[];

@@ -3,8 +3,7 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/components/auth/AppContext';
-import { AdminSubNav } from '@/components/admin/AdminSubNav';
-import { SupportTicketsTab } from '@/components/admin/SupportTicketsTab';
+import { SupportTicketsTab } from '@/components/Tickets/SupportTicketsTab';
 
 export default function TicketsPage() {
   const { currentUser, isSupabaseLoading, tickets, replyToTicket } = useApp();
@@ -35,7 +34,6 @@ export default function TicketsPage() {
 
   return (
     <div className="w-full bg-[#01161e] min-h-screen flex flex-col">
-      <AdminSubNav />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
         <SupportTicketsTab tickets={tickets} replyToTicket={replyToTicket} />

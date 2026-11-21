@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
     Users,
     Search,
     X,
     CheckCircle2,
-    XCircle,
     AlertCircle,
     Eye,
     EyeOff,
@@ -15,9 +14,7 @@ import {
     FileCheck,
     CheckSquare,
     Square,
-    MinusSquare,
     ArrowUp,
-    ArrowDown,
     ArrowUpDown,
     Mail,
     ChevronsLeft,
@@ -37,6 +34,46 @@ type SortOption =
     | 'id-asc'
     | 'id-desc'
     | 'status';
+
+interface PersistedUserTabState {
+    searchQuery: string;
+    roleFilter: UserRole[];
+    statusFilter: string;
+    sortBy: SortOption;
+    itemsPerPage: number;
+    currentPage: number;
+}
+
+const STORAGE_KEY = 'user_management_tab_preferences_v1';
+
+const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
+    { value: 'client', label: 'Clientes' },
+    { value: 'viewer', label: 'Visores' },
+    { value: 'admin', label: 'Administradores' },
+];
+
+const VALID_ROLES: UserRole[] = ['client', 'viewer', 'admin'];
+
+const VALID_SORTS: SortOption[] = [
+    'name-asc',
+    'name-desc',
+    'date-desc',
+    'date-asc',
+    'id-asc',
+    'id-desc',
+    'status',
+];
+
+function loadSavedTabPreferences(): Partial<PersistedUserTabState> | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw) as Partial<PersistedUserTabState>;
+    } catch {
+        return null;
+    }
+}
 
 interface UserManagementTabProps {
     users: AppUser[];
@@ -62,14 +99,55 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
     forceReloadUserPictures,
     onSelectUserForReview,
 }) => {
+    const [hasHydrated, setHasHydrated] = useState(false);
+    const isFirstFilterRender = useRef(true);
+
     const [searchQuery, setSearchQuery] = useState('');
-    const [roleFilter, setRoleFilter] = useState<string>('todos');
+    const [roleFilter, setRoleFilter] = useState<UserRole[]>([]);
     const [statusFilter, setStatusFilter] = useState<string>('todos');
     const [sortBy, setSortBy] = useState<SortOption>('name-asc');
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState<number>(25);
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+
+    // Hydrate saved filter/view preferences on mount
+    useEffect(() => {
+        const saved = loadSavedTabPreferences();
+        if (saved) {
+            if (typeof saved.searchQuery === 'string') setSearchQuery(saved.searchQuery);
+            if (Array.isArray(saved.roleFilter)) {
+                setRoleFilter(saved.roleFilter.filter((r): r is UserRole => VALID_ROLES.includes(r)));
+            }
+            if (typeof saved.statusFilter === 'string') setStatusFilter(saved.statusFilter);
+            if (saved.sortBy && VALID_SORTS.includes(saved.sortBy)) setSortBy(saved.sortBy);
+            if (typeof saved.itemsPerPage === 'number' && saved.itemsPerPage > 0) {
+                setItemsPerPage(saved.itemsPerPage);
+            }
+            if (typeof saved.currentPage === 'number' && saved.currentPage >= 1) {
+                setCurrentPage(saved.currentPage);
+            }
+        }
+        setHasHydrated(true);
+    }, []);
+
+    // Persist filter/view preferences whenever they change after hydration
+    useEffect(() => {
+        if (!hasHydrated || typeof window === 'undefined') return;
+        try {
+            const payload: PersistedUserTabState = {
+                searchQuery,
+                roleFilter,
+                statusFilter,
+                sortBy,
+                itemsPerPage,
+                currentPage,
+            };
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch {
+            // Ignore storage quota or privacy-mode errors
+        }
+    }, [hasHydrated, searchQuery, roleFilter, statusFilter, sortBy, itemsPerPage, currentPage]);
 
     // Mass / Single Deletion Confirmation Modal State
     const [deleteModalState, setDeleteModalState] = useState<{
@@ -105,7 +183,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                 (cleanDigits.length > 0 && u.idNumber.replace(/\D/g, '').includes(cleanDigits)) ||
                 (cleanDigits.length > 0 && u.phone.replace(/\D/g, '').includes(cleanDigits));
 
-            const matchesRole = roleFilter === 'todos' || u.role === roleFilter;
+            const matchesRole = roleFilter.length === 0 || roleFilter.includes(u.role);
             const matchesStatus = statusFilter === 'todos' || u.status === statusFilter;
 
             return matchesSearch && matchesRole && matchesStatus;
@@ -139,9 +217,15 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
         });
     }, [users, searchQuery, roleFilter, statusFilter, sortBy]);
 
+    // Reset page to 1 when filters/sort/page-size change after initial hydration
     useEffect(() => {
+        if (!hasHydrated) return;
+        if (isFirstFilterRender.current) {
+            isFirstFilterRender.current = false;
+            return;
+        }
         setCurrentPage(1);
-    }, [searchQuery, roleFilter, statusFilter, sortBy, itemsPerPage]);
+    }, [hasHydrated, searchQuery, roleFilter, statusFilter, sortBy, itemsPerPage]);
 
     const totalPages = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
     const effectivePage = Math.min(currentPage, totalPages);
@@ -154,8 +238,12 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
 
     const isAllCurrentPageSelected =
         paginatedUsers.length > 0 && paginatedUsers.every((u) => selectedUserIds.includes(u.id));
-    const isSomeCurrentPageSelected =
-        paginatedUsers.some((u) => selectedUserIds.includes(u.id)) && !isAllCurrentPageSelected;
+
+    const handleToggleRole = (role: UserRole) => {
+        setRoleFilter((prev) =>
+            prev.includes(role) ? prev.filter((item) => item !== role) : [...prev, role]
+        );
+    };
 
     const handleToggleSelectAllPage = () => {
         if (isAllCurrentPageSelected) {
@@ -215,7 +303,6 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                 }
             }
 
-            // Remove deleted users from selection if they were selected
             setSelectedUserIds((prev) => prev.filter((id) => !deleteModalState.targetIds.includes(id)));
             setDeleteModalState({
                 isOpen: false,
@@ -251,6 +338,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                         />
                         {searchQuery && (
                             <button
+                                type="button"
                                 onClick={() => setSearchQuery('')}
                                 className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded"
                             >
@@ -285,24 +373,34 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                 <option value="name-desc">Alfabético: Z → A (Nombre)</option>
                                 <option value="date-desc">Más recientes primero</option>
                                 <option value="date-asc">Más antiguos primero</option>
-                                <option value="id-asc">Cédula: Menor a Mayor[cite: 3]</option>
-                                <option value="id-desc">Cédula: Mayor a Menor[cite: 3]</option>
+                                <option value="id-asc">Cédula: Menor a Mayor</option>
+                                <option value="id-desc">Cédula: Mayor a Menor</option>
                                 <option value="status">Por Estado de Verificación</option>
                             </select>
                         </div>
 
                         <div className="flex items-center gap-1.5">
                             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden sm:inline">Rol:</span>
-                            <select
-                                value={roleFilter}
-                                onChange={(e) => setRoleFilter(e.target.value)}
-                                className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 shadow-sm"
-                            >
-                                <option value="todos">Todos los Roles</option>
-                                <option value="client">Clientes</option>
-                                <option value="viewer">Visores</option>
-                                <option value="admin">Administradores</option>
-                            </select>
+                            <div className="flex flex-wrap items-center gap-1 bg-white border border-slate-300 rounded-lg p-1 shadow-sm">
+                                {ROLE_OPTIONS.map((role) => {
+                                    const active =
+                                        roleFilter.includes(role.value) ||
+                                        (role.value === 'client' && roleFilter.length === 0);
+                                    return (
+                                        <button
+                                            key={role.value}
+                                            type="button"
+                                            onClick={() => handleToggleRole(role.value)}
+                                            className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors cursor-pointer ${active
+                                                    ? 'bg-indigo-600 text-white shadow-2xs'
+                                                    : 'text-slate-700 hover:bg-slate-100'
+                                                }`}
+                                        >
+                                            {role.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
 
                         <div className="flex items-center gap-1.5">
@@ -331,14 +429,23 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
 
                     <div className="flex items-center gap-2">
                         <button
+                            type="button"
                             onClick={handleToggleSelectAllPage}
                             className="text-xs font-bold text-[#0e1b29] hover:text-[#d9251d] flex items-center gap-1 transition-colors"
                         >
-                            {isAllCurrentPageSelected ? <CheckSquare className="w-4 h-4 text-[#d9251d]" /> : <Square className="w-4 h-4 text-slate-400" />}
+                            {isAllCurrentPageSelected ? (
+                                <CheckSquare className="w-4 h-4 text-[#d9251d]" />
+                            ) : (
+                                <Square className="w-4 h-4 text-slate-400" />
+                            )}
                             <span>{isAllCurrentPageSelected ? 'Deseleccionar Página' : 'Seleccionar Página'}</span>
                         </button>
                         {filteredUsers.length > paginatedUsers.length && (
-                            <button onClick={handleSelectAllFiltered} className="text-xs font-bold text-indigo-700 hover:underline ml-2">
+                            <button
+                                type="button"
+                                onClick={handleSelectAllFiltered}
+                                className="text-xs font-bold text-indigo-700 hover:underline ml-2"
+                            >
                                 Seleccionar los {filteredUsers.length} coincidentes
                             </button>
                         )}
@@ -358,6 +465,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                         <div className="flex flex-wrap items-center gap-2">
                             {forceReloadUserPictures && (
                                 <button
+                                    type="button"
                                     onClick={() => {
                                         forceReloadUserPictures(selectedUserIds);
                                     }}
@@ -368,16 +476,29 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                     <span>Recargar Fotos ({selectedUserIds.length})</span>
                                 </button>
                             )}
-                            <button onClick={() => handleBulkStatusChange('aprobado')} className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow">
+                            <button
+                                type="button"
+                                onClick={() => handleBulkStatusChange('aprobado')}
+                                className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow"
+                            >
                                 Aprobar Cédulas
                             </button>
-                            <button onClick={() => handleBulkStatusChange('rechazado')} className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg shadow">
+                            <button
+                                type="button"
+                                onClick={() => handleBulkStatusChange('rechazado')}
+                                className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg shadow"
+                            >
                                 Rechazar
                             </button>
-                            <button onClick={() => handleBulkViewerVisibility(true)} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow">
+                            <button
+                                type="button"
+                                onClick={() => handleBulkViewerVisibility(true)}
+                                className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow"
+                            >
                                 Hacer Visibles
                             </button>
                             <button
+                                type="button"
                                 onClick={() => handleOpenDeleteModal(selectedUserIds)}
                                 className="px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-lg shadow flex items-center gap-1.5 transition-colors cursor-pointer"
                                 title="Eliminar masivamente los usuarios seleccionados"
@@ -385,7 +506,11 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                 <Trash2 className="w-3.5 h-3.5" />
                                 <span>Eliminar ({selectedUserIds.length})</span>
                             </button>
-                            <button onClick={handleClearSelection} className="px-2.5 py-1.5 text-xs text-slate-300 hover:text-white">
+                            <button
+                                type="button"
+                                onClick={handleClearSelection}
+                                className="px-2.5 py-1.5 text-xs text-slate-300 hover:text-white"
+                            >
                                 Cancelar
                             </button>
                         </div>
@@ -398,25 +523,43 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                     <thead>
                         <tr className="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
                             <th className="py-3.5 px-4 w-10 text-center">
-                                <button onClick={handleToggleSelectAllPage} className="p-1 text-slate-500 hover:text-[#d9251d]">
-                                    {isAllCurrentPageSelected ? <CheckSquare className="w-4 h-4 text-[#d9251d]" /> : <Square className="w-4 h-4 text-slate-400" />}
+                                <button
+                                    type="button"
+                                    onClick={handleToggleSelectAllPage}
+                                    className="p-1 text-slate-500 hover:text-[#d9251d]"
+                                >
+                                    {isAllCurrentPageSelected ? (
+                                        <CheckSquare className="w-4 h-4 text-[#d9251d]" />
+                                    ) : (
+                                        <Square className="w-4 h-4 text-slate-400" />
+                                    )}
                                 </button>
                             </th>
                             <th onClick={() => toggleSort('name')} className="py-3.5 px-4 cursor-pointer">
                                 <div className="flex items-center gap-1.5">
                                     <span>Usuario / Nombre Oficial</span>
-                                    {sortBy === 'name-asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#d9251d]" /> : <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />}
+                                    {sortBy === 'name-asc' ? (
+                                        <ArrowUp className="w-3.5 h-3.5 text-[#d9251d]" />
+                                    ) : (
+                                        <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                                    )}
                                 </div>
                             </th>
                             <th onClick={() => toggleSort('id')} className="py-3.5 px-4 cursor-pointer">
                                 <div className="flex items-center gap-1.5">
                                     <span>Cédula Oficial</span>
-                                    {sortBy === 'id-asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#d9251d]" /> : <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />}
+                                    {sortBy === 'id-asc' ? (
+                                        <ArrowUp className="w-3.5 h-3.5 text-[#d9251d]" />
+                                    ) : (
+                                        <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                                    )}
                                 </div>
                             </th>
                             <th className="py-3.5 px-4">Teléfono</th>
                             <th className="py-3.5 px-4">Rol</th>
-                            <th onClick={() => toggleSort('status')} className="py-3.5 px-4 cursor-pointer">Estado Cédula</th>
+                            <th onClick={() => toggleSort('status')} className="py-3.5 px-4 cursor-pointer">
+                                Estado Cédula
+                            </th>
                             <th className="py-3.5 px-4 text-center">Visible para Visores</th>
                             <th className="py-3.5 px-4 text-right">Acciones</th>
                         </tr>
@@ -433,19 +576,37 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             paginatedUsers.map((user) => {
                                 const isSelected = selectedUserIds.includes(user.id);
                                 return (
-                                    <tr key={user.id} className={`transition-colors ${isSelected ? 'bg-amber-50/70' : 'hover:bg-slate-50/80'}`}>
+                                    <tr
+                                        key={user.id}
+                                        className={`transition-colors ${isSelected ? 'bg-amber-50/70' : 'hover:bg-slate-50/80'
+                                            }`}
+                                    >
                                         <td className="py-3.5 px-4 text-center">
-                                            <button onClick={() => handleToggleUserSelection(user.id)} className="p-1 text-slate-500 hover:text-[#d9251d]">
-                                                {isSelected ? <CheckSquare className="w-4 h-4 text-[#d9251d]" /> : <Square className="w-4 h-4 text-slate-300" />}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleToggleUserSelection(user.id)}
+                                                className="p-1 text-slate-500 hover:text-[#d9251d]"
+                                            >
+                                                {isSelected ? (
+                                                    <CheckSquare className="w-4 h-4 text-[#d9251d]" />
+                                                ) : (
+                                                    <Square className="w-4 h-4 text-slate-300" />
+                                                )}
                                             </button>
                                         </td>
                                         <td className="py-3.5 px-4">
                                             <div className="flex items-center gap-3">
                                                 <button
+                                                    type="button"
                                                     onClick={() => onSelectUserForReview(user)}
                                                     className="w-12 h-9 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 relative group"
                                                 >
-                                                    <DocumentImage src={user.idPhotoUrl} alt={user.fullName} objectFit="cover" showLoadingSpinner={false} />
+                                                    <DocumentImage
+                                                        src={user.idPhotoUrl}
+                                                        alt={user.fullName}
+                                                        objectFit="cover"
+                                                        showLoadingSpinner={false}
+                                                    />
                                                 </button>
                                                 <div>
                                                     <div className="font-bold text-slate-900 text-sm">{user.fullName}</div>
@@ -456,8 +617,12 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="py-3.5 px-4 font-mono font-bold text-slate-800">{formatIdNumber(user)}</td>
-                                        <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px]">{user.phone || 'No registrado'}</td>
+                                        <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
+                                            {formatIdNumber(user)}
+                                        </td>
+                                        <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px]">
+                                            {user.phone || 'No registrado'}
+                                        </td>
                                         <td className="py-3.5 px-4">
                                             <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
                                                 {user.role}
@@ -473,10 +638,16 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={() => toggleViewerVisibility(user.id)}
-                                                className={`px-3 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 ${user.visibleToViewers ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'
+                                                className={`px-3 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 ${user.visibleToViewers
+                                                    ? 'bg-indigo-600 text-white'
+                                                    : 'bg-slate-200 text-slate-600'
                                                     }`}
                                             >
-                                                {user.visibleToViewers ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                                                {user.visibleToViewers ? (
+                                                    <Eye className="w-3.5 h-3.5" />
+                                                ) : (
+                                                    <EyeOff className="w-3.5 h-3.5" />
+                                                )}
                                                 <span>{user.visibleToViewers ? 'En Lista' : 'Oculto'}</span>
                                             </button>
                                         </td>
@@ -484,6 +655,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                             <div className="flex items-center justify-end gap-1.5">
                                                 {forceReloadUserPictures && (
                                                     <button
+                                                        type="button"
                                                         onClick={() => forceReloadUserPictures([user.id])}
                                                         className="p-1.5 rounded hover:bg-amber-100 text-amber-700 hover:text-amber-900"
                                                         title="Recargar Foto de Cédula"
@@ -491,13 +663,24 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                                         <RotateCw className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                <button onClick={() => onSelectUserForReview(user)} className="p-1.5 rounded hover:bg-slate-200 text-slate-600" title="Revisar Cédula">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onSelectUserForReview(user)}
+                                                    className="p-1.5 rounded hover:bg-slate-200 text-slate-600"
+                                                    title="Revisar Cédula"
+                                                >
                                                     <FileCheck className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={() => setEditingUser(user)} className="p-1.5 rounded hover:bg-slate-200 text-slate-600" title="Editar">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditingUser(user)}
+                                                    className="p-1.5 rounded hover:bg-slate-200 text-slate-600"
+                                                    title="Editar"
+                                                >
                                                     <Edit className="w-4 h-4" />
                                                 </button>
                                                 <button
+                                                    type="button"
                                                     onClick={() => handleOpenDeleteModal([user.id])}
                                                     className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-600"
                                                     title="Eliminar Usuario"
@@ -517,19 +700,40 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
             {itemsPerPage < 9999 && totalPages > 1 && (
                 <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-xs text-slate-600">
-                        Página <strong className="text-slate-900">{effectivePage}</strong> de <strong className="text-slate-900">{totalPages}</strong>
+                        Página <strong className="text-slate-900">{effectivePage}</strong> de{' '}
+                        <strong className="text-slate-900">{totalPages}</strong>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <button onClick={() => setCurrentPage(1)} disabled={effectivePage <= 1} className="p-2 border rounded bg-white disabled:opacity-40">
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage(1)}
+                            disabled={effectivePage <= 1}
+                            className="p-2 border rounded bg-white disabled:opacity-40"
+                        >
                             <ChevronsLeft className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={effectivePage <= 1} className="p-2 border rounded bg-white disabled:opacity-40">
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={effectivePage <= 1}
+                            className="p-2 border rounded bg-white disabled:opacity-40"
+                        >
                             <ChevronLeft className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={effectivePage >= totalPages} className="p-2 border rounded bg-white disabled:opacity-40">
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={effectivePage >= totalPages}
+                            className="p-2 border rounded bg-white disabled:opacity-40"
+                        >
                             <ChevronRight className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setCurrentPage(totalPages)} disabled={effectivePage >= totalPages} className="p-2 border rounded bg-white disabled:opacity-40">
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage(totalPages)}
+                            disabled={effectivePage >= totalPages}
+                            className="p-2 border rounded bg-white disabled:opacity-40"
+                        >
                             <ChevronsRight className="w-4 h-4" />
                         </button>
                     </div>
@@ -551,7 +755,10 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                 </h3>
                             </div>
                             <button
-                                onClick={() => setDeleteModalState({ isOpen: false, targetIds: [], confirmText: '', isDeleting: false })}
+                                type="button"
+                                onClick={() =>
+                                    setDeleteModalState({ isOpen: false, targetIds: [], confirmText: '', isDeleting: false })
+                                }
                                 className="text-red-200 hover:text-white p-1 rounded-lg"
                                 disabled={deleteModalState.isDeleting}
                             >
@@ -588,13 +795,16 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             {/* Safety confirmation input */}
                             <div className="space-y-1.5 pt-2">
                                 <label className="block font-bold text-slate-800">
-                                    Para confirmar la eliminación, escribe la palabra <span className="text-red-600 font-mono font-black">ELIMINAR</span> a continuación:
+                                    Para confirmar la eliminación, escribe la palabra{' '}
+                                    <span className="text-red-600 font-mono font-black">ELIMINAR</span> a continuación:
                                 </label>
                                 <input
                                     type="text"
                                     autoFocus
                                     value={deleteModalState.confirmText}
-                                    onChange={(e) => setDeleteModalState((prev) => ({ ...prev, confirmText: e.target.value }))}
+                                    onChange={(e) =>
+                                        setDeleteModalState((prev) => ({ ...prev, confirmText: e.target.value }))
+                                    }
                                     placeholder="Escribe ELIMINAR para habilitar el botón"
                                     disabled={deleteModalState.isDeleting}
                                     className="w-full p-2.5 bg-slate-50 border-2 border-slate-300 focus:border-red-600 rounded-lg text-slate-900 font-mono font-bold tracking-wider text-sm focus:outline-none"
@@ -606,14 +816,19 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                 <button
                                     type="button"
                                     disabled={deleteModalState.isDeleting}
-                                    onClick={() => setDeleteModalState({ isOpen: false, targetIds: [], confirmText: '', isDeleting: false })}
+                                    onClick={() =>
+                                        setDeleteModalState({ isOpen: false, targetIds: [], confirmText: '', isDeleting: false })
+                                    }
                                     className="px-4 py-2 border border-slate-300 hover:bg-slate-50 rounded-lg font-bold text-slate-700 transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="button"
-                                    disabled={deleteModalState.confirmText.trim().toUpperCase() !== 'ELIMINAR' || deleteModalState.isDeleting}
+                                    disabled={
+                                        deleteModalState.confirmText.trim().toUpperCase() !== 'ELIMINAR' ||
+                                        deleteModalState.isDeleting
+                                    }
                                     onClick={handleExecuteDelete}
                                     className="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-lg shadow transition-all flex items-center gap-2"
                                 >
