@@ -1,8 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, PlusCircle } from 'lucide-react';
-import { SupportTicket } from '@/lib/types';
+import { X, PlusCircle, Mail, Eye, Users } from 'lucide-react';
+import { NewsScope } from '@/lib/types';
+
+const SCOPE_OPTIONS: { value: NewsScope; label: string }[] = [
+    { value: 'anonymous', label: 'Anónimos (Inicio)' },
+    { value: 'users', label: 'Usuarios' },
+    { value: 'viewers', label: 'Visores' },
+    { value: 'admins', label: 'Admins' },
+];
 
 interface CreateNewsModalProps {
     isOpen: boolean;
@@ -16,6 +23,10 @@ interface CreateNewsModalProps {
         author: string;
         important: boolean;
         imageUrl?: string;
+        status?: 'active' | 'inactive';
+        scopes?: NewsScope[];
+        showAuthor?: boolean;
+        sendEmail?: boolean;
     }) => void;
 }
 
@@ -30,8 +41,17 @@ export const CreateNewsModal: React.FC<CreateNewsModalProps> = ({
     const [newsSummary, setNewsSummary] = useState('');
     const [newsContent, setNewsContent] = useState('');
     const [newsImportant, setNewsImportant] = useState(false);
+    const [selectedScopes, setSelectedScopes] = useState<NewsScope[]>(['anonymous', 'users']);
+    const [showAuthor, setShowAuthor] = useState(true);
+    const [sendEmail, setSendEmail] = useState(false);
 
     if (!isOpen) return null;
+
+    const toggleScope = (scope: NewsScope) => {
+        setSelectedScopes((prev) =>
+            prev.includes(scope) ? prev.filter((s) => s !== scope) : [...prev, scope]
+        );
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -45,12 +65,19 @@ export const CreateNewsModal: React.FC<CreateNewsModalProps> = ({
             author: authorName,
             important: newsImportant,
             imageUrl: '/images/campo-petrolero-1068x712.jpg',
+            status: 'active',
+            scopes: selectedScopes.length > 0 ? selectedScopes : ['anonymous'],
+            showAuthor,
+            sendEmail,
         });
 
         setNewsTitle('');
         setNewsSummary('');
         setNewsContent('');
         setNewsImportant(false);
+        setSelectedScopes(['anonymous', 'users']);
+        setShowAuthor(true);
+        setSendEmail(false);
         onClose();
     };
 
@@ -138,6 +165,58 @@ export const CreateNewsModal: React.FC<CreateNewsModalProps> = ({
                             placeholder="Texto oficial del comunicado..."
                             className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
                         />
+                    </div>
+
+                    {/* Target Audience Scope */}
+                    <div>
+                        <label className="block font-bold text-slate-700 uppercase mb-1.5 flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Alcance / Audiencia</span>
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {SCOPE_OPTIONS.map((opt) => {
+                                const active = selectedScopes.includes(opt.value);
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => toggleScope(opt.value)}
+                                        className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                            active
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                                : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Author Visibility & Email Notification Toggles */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                        <label className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={showAuthor}
+                                onChange={(e) => setShowAuthor(e.target.checked)}
+                                className="rounded text-indigo-600 w-4 h-4"
+                            />
+                            <Eye className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span className="font-semibold text-slate-700">Mostrar autor</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={sendEmail}
+                                onChange={(e) => setSendEmail(e.target.checked)}
+                                className="rounded text-indigo-600 w-4 h-4"
+                            />
+                            <Mail className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                            <span className="font-semibold text-slate-700">Enviar correo al alcance</span>
+                        </label>
                     </div>
 
                     <div className="pt-2 flex justify-end gap-3">

@@ -33,8 +33,8 @@ export default function NewsPage() {
   }
 
   return (
-    <div className="w-full bg-[#01161e] min-h-screen flex flex-col">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
+    <div className="w-full bg-slate-300 min-h-screen flex flex-col overflow-x-clip">
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 py-4 sm:py-6 flex-1 w-full">
         <NewsPublisherTab
           news={news}
           authorName={currentUser?.fullName || 'Dirección de Administración'}

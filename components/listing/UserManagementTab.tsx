@@ -6,6 +6,8 @@ import {
     Search,
     X,
     CheckCircle2,
+    Clock,
+    XCircle,
     AlertCircle,
     Eye,
     EyeOff,
@@ -323,9 +325,34 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
         else if (type === 'date') setSortBy((prev) => (prev === 'date-desc' ? 'date-asc' : 'date-desc'));
     };
 
+    const renderStatusBadge = (status: VerificationStatus) => {
+        if (status === 'aprobado') {
+            return (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>aprobado</span>
+                </span>
+            );
+        }
+        if (status === 'pendiente') {
+            return (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>pendiente</span>
+                </span>
+            );
+        }
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-200">
+                <XCircle className="w-3.5 h-3.5 text-red-600" />
+                <span>rechazado</span>
+            </span>
+        );
+    };
+
     return (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-200 bg-slate-50/70 space-y-4">
+        <div className="bg-white rounded-xl border border-slate-900 shadow-sm overflow-hidden text-slate-900">
+            <div className="p-5 border-b border-slate-200 bg-slate-50/60 space-y-4">
                 <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
                     <div className="relative flex-1 max-w-xl">
                         <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
@@ -334,7 +361,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Buscar por teléfono, cédula o correo..."
-                            className="w-full pl-10 pr-9 py-2 bg-white border border-slate-300 rounded-lg text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d9251d] shadow-sm"
+                            className="w-full pl-10 pr-9 py-2 bg-white border border-slate-900 rounded-lg text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 shadow-sm"
                         />
                         {searchQuery && (
                             <button
@@ -353,7 +380,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 shadow-sm"
+                                className="px-3 py-2 bg-white border border-slate-900 rounded-lg text-xs font-semibold text-slate-800 shadow-sm"
                             >
                                 <option value="todos">Todos los Estados ({totalUsers})</option>
                                 <option value="pendiente">Pendientes ({pendingReviews})</option>
@@ -367,7 +394,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             <select
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                                className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 shadow-sm"
+                                className="px-3 py-2 bg-white border border-slate-900 rounded-lg text-xs font-semibold text-slate-800 shadow-sm"
                             >
                                 <option value="name-asc">Alfabético: A → Z (Nombre)</option>
                                 <option value="name-desc">Alfabético: Z → A (Nombre)</option>
@@ -381,7 +408,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
 
                         <div className="flex items-center gap-1.5">
                             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden sm:inline">Rol:</span>
-                            <div className="flex flex-wrap items-center gap-1 bg-white border border-slate-300 rounded-lg p-1 shadow-sm">
+                            <div className="flex flex-wrap items-center gap-1 bg-white border border-slate-900 rounded-lg p-1 shadow-sm">
                                 {ROLE_OPTIONS.map((role) => {
                                     const active =
                                         roleFilter.includes(role.value) ||
@@ -392,8 +419,8 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                             type="button"
                                             onClick={() => handleToggleRole(role.value)}
                                             className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors cursor-pointer ${active
-                                                    ? 'bg-indigo-600 text-white shadow-2xs'
-                                                    : 'text-slate-700 hover:bg-slate-100'
+                                                ? 'bg-indigo-600 text-white shadow-2xs'
+                                                : 'text-slate-700 hover:bg-slate-100'
                                                 }`}
                                         >
                                             {role.label}
@@ -408,7 +435,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             <select
                                 value={itemsPerPage}
                                 onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                                className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 shadow-sm"
+                                className="px-3 py-2 bg-white border border-slate-900 rounded-lg text-xs font-semibold text-slate-800 shadow-sm"
                             >
                                 <option value={10}>10</option>
                                 <option value={25}>25</option>
@@ -423,7 +450,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                 <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 pt-1 gap-2">
                     <div className="flex items-center gap-2">
                         <span className="font-semibold text-slate-700">
-                            Mostrando {filteredUsers.length === 0 ? 0 : startIndex + 1} - {endIndex} de {filteredUsers.length} usuarios
+                            Mostrando <strong className="text-slate-800">{filteredUsers.length === 0 ? 0 : startIndex + 1} - {endIndex}</strong> de {filteredUsers.length} usuarios
                         </span>
                     </div>
 
@@ -431,7 +458,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                         <button
                             type="button"
                             onClick={handleToggleSelectAllPage}
-                            className="text-xs font-bold text-[#0e1b29] hover:text-[#d9251d] flex items-center gap-1 transition-colors"
+                            className="text-xs font-bold text-[#0e1b29] hover:text-[#d9251d] flex items-center gap-1 transition-colors cursor-pointer"
                         >
                             {isAllCurrentPageSelected ? (
                                 <CheckSquare className="w-4 h-4 text-[#d9251d]" />
@@ -444,7 +471,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             <button
                                 type="button"
                                 onClick={handleSelectAllFiltered}
-                                className="text-xs font-bold text-indigo-700 hover:underline ml-2"
+                                className="text-xs font-bold text-indigo-700 hover:underline ml-2 cursor-pointer"
                             >
                                 Seleccionar los {filteredUsers.length} coincidentes
                             </button>
@@ -479,21 +506,21 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             <button
                                 type="button"
                                 onClick={() => handleBulkStatusChange('aprobado')}
-                                className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow"
+                                className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow cursor-pointer"
                             >
                                 Aprobar Cédulas
                             </button>
                             <button
                                 type="button"
                                 onClick={() => handleBulkStatusChange('rechazado')}
-                                className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg shadow"
+                                className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg shadow cursor-pointer"
                             >
                                 Rechazar
                             </button>
                             <button
                                 type="button"
                                 onClick={() => handleBulkViewerVisibility(true)}
-                                className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow"
+                                className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow cursor-pointer"
                             >
                                 Hacer Visibles
                             </button>
@@ -509,7 +536,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             <button
                                 type="button"
                                 onClick={handleClearSelection}
-                                className="px-2.5 py-1.5 text-xs text-slate-300 hover:text-white"
+                                className="px-2.5 py-1.5 text-xs text-slate-300 hover:text-white cursor-pointer"
                             >
                                 Cancelar
                             </button>
@@ -521,12 +548,12 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                        <tr className="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
+                        <tr className="bg-slate-900 text-slate-100 font-bold uppercase tracking-wider border-b border-slate-200">
                             <th className="py-3.5 px-4 w-10 text-center">
                                 <button
                                     type="button"
                                     onClick={handleToggleSelectAllPage}
-                                    className="p-1 text-slate-500 hover:text-[#d9251d]"
+                                    className="p-1 text-slate-300 hover:text-white cursor-pointer"
                                 >
                                     {isAllCurrentPageSelected ? (
                                         <CheckSquare className="w-4 h-4 text-[#d9251d]" />
@@ -564,10 +591,10 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             <th className="py-3.5 px-4 text-right">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-400">
                         {paginatedUsers.length === 0 ? (
                             <tr>
-                                <td colSpan={8} className="py-12 text-center text-slate-500">
+                                <td colSpan={8} className="py-12 text-center text-slate-400">
                                     <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                                     <div className="text-sm font-bold text-slate-700">No se encontraron usuarios coincidentes</div>
                                 </td>
@@ -578,19 +605,19 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                 return (
                                     <tr
                                         key={user.id}
-                                        className={`transition-colors ${isSelected ? 'bg-amber-50/70' : 'hover:bg-slate-50/80'
+                                        className={`transition-colors ${isSelected ? 'bg-amber-50/70' : 'hover:bg-slate-50'
                                             }`}
                                     >
                                         <td className="py-3.5 px-4 text-center">
                                             <button
                                                 type="button"
                                                 onClick={() => handleToggleUserSelection(user.id)}
-                                                className="p-1 text-slate-500 hover:text-[#d9251d]"
+                                                className="p-1 text-slate-500 hover:text-[#d9251d] cursor-pointer"
                                             >
                                                 {isSelected ? (
                                                     <CheckSquare className="w-4 h-4 text-[#d9251d]" />
                                                 ) : (
-                                                    <Square className="w-4 h-4 text-slate-300" />
+                                                    <Square className="w-4 h-4 text-slate-400" />
                                                 )}
                                             </button>
                                         </td>
@@ -599,7 +626,8 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                                 <button
                                                     type="button"
                                                     onClick={() => onSelectUserForReview(user)}
-                                                    className="w-12 h-9 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 relative group"
+                                                    className="w-14 h-10 rounded-lg overflow-hidden border-2 border-slate-900 hover:border-indigo-500 shadow-xs hover:shadow-md transition-all bg-slate-100 shrink-0 relative group cursor-pointer"
+                                                    title="Revisar cédula"
                                                 >
                                                     <DocumentImage
                                                         src={user.idPhotoUrl}
@@ -610,8 +638,8 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                                 </button>
                                                 <div>
                                                     <div className="font-bold text-slate-900 text-sm">{user.fullName}</div>
-                                                    <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                                                        <Mail className="w-3 h-3" />
+                                                    <div className="text-[11px] text-slate-600 flex items-center gap-1">
+                                                        <Mail className="w-3 h-3 text-slate-400" />
                                                         <span>{user.email}</span>
                                                     </div>
                                                 </div>
@@ -620,27 +648,24 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                         <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
                                             {formatIdNumber(user)}
                                         </td>
-                                        <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px]">
+                                        <td className="py-3.5 px-4 text-slate-600 font-mono text-nowrap">
                                             {user.phone || 'No registrado'}
                                         </td>
                                         <td className="py-3.5 px-4">
-                                            <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
+                                            <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-indigo-50 text-indigo-800 border border-indigo-200">
                                                 {user.role}
                                             </span>
                                         </td>
                                         <td className="py-3.5 px-4">
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                                <span className="capitalize">{user.status}</span>
-                                            </span>
+                                            {renderStatusBadge(user.status)}
                                         </td>
                                         <td className="py-3.5 px-4 text-center">
                                             <button
                                                 type="button"
                                                 onClick={() => toggleViewerVisibility(user.id)}
-                                                className={`px-3 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 ${user.visibleToViewers
+                                                className={`px-3 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 cursor-pointer ${user.visibleToViewers
                                                     ? 'bg-indigo-600 text-white'
-                                                    : 'bg-slate-200 text-slate-600'
+                                                    : 'bg-slate-200 text-slate-700'
                                                     }`}
                                             >
                                                 {user.visibleToViewers ? (
@@ -657,7 +682,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                                     <button
                                                         type="button"
                                                         onClick={() => forceReloadUserPictures([user.id])}
-                                                        className="p-1.5 rounded hover:bg-amber-100 text-amber-700 hover:text-amber-900"
+                                                        className="p-1.5 rounded hover:bg-amber-100 text-amber-700 hover:text-amber-900 cursor-pointer"
                                                         title="Recargar Foto de Cédula"
                                                     >
                                                         <RotateCw className="w-4 h-4" />
@@ -666,7 +691,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                                 <button
                                                     type="button"
                                                     onClick={() => onSelectUserForReview(user)}
-                                                    className="p-1.5 rounded hover:bg-slate-200 text-slate-600"
+                                                    className="p-1.5 rounded hover:bg-slate-200 text-slate-700 cursor-pointer"
                                                     title="Revisar Cédula"
                                                 >
                                                     <FileCheck className="w-4 h-4" />
@@ -674,7 +699,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                                 <button
                                                     type="button"
                                                     onClick={() => setEditingUser(user)}
-                                                    className="p-1.5 rounded hover:bg-slate-200 text-slate-600"
+                                                    className="p-1.5 rounded hover:bg-slate-200 text-slate-700 cursor-pointer"
                                                     title="Editar"
                                                 >
                                                     <Edit className="w-4 h-4" />
@@ -682,7 +707,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                                 <button
                                                     type="button"
                                                     onClick={() => handleOpenDeleteModal([user.id])}
-                                                    className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-600"
+                                                    className="p-1.5 rounded hover:bg-red-50 text-slate-500 hover:text-red-600 cursor-pointer"
                                                     title="Eliminar Usuario"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
@@ -708,7 +733,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             type="button"
                             onClick={() => setCurrentPage(1)}
                             disabled={effectivePage <= 1}
-                            className="p-2 border rounded bg-white disabled:opacity-40"
+                            className="p-2 border border-slate-900 rounded bg-white disabled:opacity-40 cursor-pointer"
                         >
                             <ChevronsLeft className="w-4 h-4" />
                         </button>
@@ -716,7 +741,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             type="button"
                             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                             disabled={effectivePage <= 1}
-                            className="p-2 border rounded bg-white disabled:opacity-40"
+                            className="p-2 border border-slate-900 rounded bg-white disabled:opacity-40 cursor-pointer"
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </button>
@@ -724,7 +749,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             type="button"
                             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                             disabled={effectivePage >= totalPages}
-                            className="p-2 border rounded bg-white disabled:opacity-40"
+                            className="p-2 border border-slate-900 rounded bg-white disabled:opacity-40 cursor-pointer"
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>
@@ -732,7 +757,7 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             type="button"
                             onClick={() => setCurrentPage(totalPages)}
                             disabled={effectivePage >= totalPages}
-                            className="p-2 border rounded bg-white disabled:opacity-40"
+                            className="p-2 border border-slate-900 rounded bg-white disabled:opacity-40 cursor-pointer"
                         >
                             <ChevronsRight className="w-4 h-4" />
                         </button>
@@ -744,7 +769,6 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
             {deleteModalState.isOpen && (
                 <div className="fixed inset-0 z-[180] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl max-w-md w-full border border-red-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                        {/* Header */}
                         <div className="bg-red-700 text-white p-5 flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
                                 <AlertCircle className="w-5 h-5 text-white" />
@@ -766,7 +790,6 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                             </button>
                         </div>
 
-                        {/* Body */}
                         <div className="p-6 space-y-4 text-xs text-slate-700">
                             <div className="p-3 bg-red-50 border border-red-200 rounded-xl space-y-1.5 text-red-900">
                                 <p className="font-bold text-sm text-red-700">⚠️ Esta acción es irreversible.</p>
@@ -775,7 +798,6 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                 </p>
                             </div>
 
-                            {/* Summary of affected users */}
                             <div>
                                 <span className="font-bold uppercase text-[11px] text-slate-500 block mb-1">
                                     Usuarios que se eliminarán ({deleteModalState.targetIds.length}):
@@ -792,7 +814,6 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                 </div>
                             </div>
 
-                            {/* Safety confirmation input */}
                             <div className="space-y-1.5 pt-2">
                                 <label className="block font-bold text-slate-800">
                                     Para confirmar la eliminación, escribe la palabra{' '}
@@ -811,7 +832,6 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({
                                 />
                             </div>
 
-                            {/* Modal Actions */}
                             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
                                 <button
                                     type="button"

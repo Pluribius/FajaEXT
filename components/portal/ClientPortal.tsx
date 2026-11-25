@@ -1,19 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
 import {
   User,
   Mail,
-  Phone,
   CreditCard,
-  ShieldCheck,
   Clock,
   AlertTriangle,
   PlusCircle,
   MessageSquare,
-  FileText,
-  Calendar,
   CheckCircle2,
   Eye,
   X,
@@ -21,12 +16,7 @@ import {
   Lock,
   Copy,
   Check,
-  RefreshCw,
-  SlidersHorizontal,
-  ChevronRight,
   Shield,
-  Layers,
-  Sparkles,
 } from 'lucide-react';
 import { useApp } from '@/components/auth/AppContext';
 import { SupportTicket, getUserUID, formatIdNumber } from '@/lib/types';
@@ -76,7 +66,7 @@ export const ClientPortal = () => {
 
   if (!currentUser) return null;
 
-  const idPrefix = currentUser.idType === false || (currentUser as any).ID_Type === false ? 'E' : 'V';
+  const idPrefix = currentUser.idType === false || (currentUser as { ID_Type?: boolean }).ID_Type === false ? 'E' : 'V';
   const myTickets = tickets.filter(
     (t) =>
       t.userId === currentUser.id ||
@@ -203,7 +193,7 @@ export const ClientPortal = () => {
             {/* Left: Entity Name, Flags & Chips */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#10b981]" />
-              
+
               <div className="flex items-center gap-2">
                 <span className="text-base sm:text-lg font-black text-white tracking-tight uppercase">
                   {currentUser.fullName}
@@ -251,11 +241,10 @@ export const ClientPortal = () => {
               <button
                 type="button"
                 onClick={() => setIsEditingEmail(!isEditingEmail)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border ${
-                  isEditingEmail
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border ${isEditingEmail
                     ? 'bg-indigo-600 border-indigo-500 text-white'
                     : 'bg-slate-800/90 hover:bg-slate-700 text-slate-200 border-slate-700'
-                }`}
+                  }`}
               >
                 <Mail className="w-3.5 h-3.5 text-slate-400" />
                 <span className="hidden sm:inline">Correo</span>
@@ -264,11 +253,10 @@ export const ClientPortal = () => {
               <button
                 type="button"
                 onClick={() => setIsEditingPassword(!isEditingPassword)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border ${
-                  isEditingPassword
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border ${isEditingPassword
                     ? 'bg-indigo-600 border-indigo-500 text-white'
                     : 'bg-slate-800/90 hover:bg-slate-700 text-slate-200 border-slate-700'
-                }`}
+                  }`}
               >
                 <Lock className="w-3.5 h-3.5 text-slate-400" />
                 <span className="hidden sm:inline">Seguridad</span>
@@ -289,33 +277,30 @@ export const ClientPortal = () => {
           <div className="flex items-center gap-1 border-t border-slate-800/80 pt-2.5 mt-3 overflow-x-auto text-xs">
             <button
               onClick={() => setActiveTab('resumen')}
-              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'resumen'
+              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer ${activeTab === 'resumen'
                   ? 'bg-white/10 text-white shadow-xs'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
+                }`}
             >
               Ficha & Expediente
             </button>
 
             <button
               onClick={() => setActiveTab('documento')}
-              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'documento'
+              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer ${activeTab === 'documento'
                   ? 'bg-white/10 text-white shadow-xs'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
+                }`}
             >
               Cédula Digitalizada
             </button>
 
             <button
               onClick={() => setActiveTab('noticias')}
-              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'noticias'
+              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${activeTab === 'noticias'
                   ? 'bg-white/10 text-white shadow-xs'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
+                }`}
             >
               <span>Noticias Oficiales</span>
               {news.length > 0 && (
@@ -327,11 +312,10 @@ export const ClientPortal = () => {
 
             <button
               onClick={() => setActiveTab('soporte')}
-              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                activeTab === 'soporte'
+              className={`px-3 py-1.5 rounded-md font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${activeTab === 'soporte'
                   ? 'bg-white/10 text-white shadow-xs'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
+                }`}
             >
               <span>Tickets de Soporte</span>
               {myTickets.length > 0 && (
@@ -430,10 +414,10 @@ export const ClientPortal = () => {
           </div>
         )}
 
-        {/* TAB 1: RESUMEN & EXPEDIENTE (The Condensed Telemetry Grid) */}
+        {/* TAB 1: RESUMEN & EXPEDIENTE */}
         {activeTab === 'resumen' && (
           <div className="space-y-3.5">
-            {/* Voyage / Expediente Progress Card (MarineTraffic Signature Element) */}
+            {/* Expediente Progress Card */}
             <div className="bg-[#0b1622]/90 border border-slate-700/60 rounded-xl p-3.5 sm:p-4 shadow-sm backdrop-blur-md">
               <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -444,7 +428,6 @@ export const ClientPortal = () => {
                 </span>
               </div>
 
-              {/* Step Bar Track */}
               <div className="relative py-2">
                 <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
                   <div
@@ -453,7 +436,6 @@ export const ClientPortal = () => {
                   />
                 </div>
 
-                {/* Milestone Markers */}
                 <div className="grid grid-cols-4 text-center mt-3 gap-2">
                   <div className="flex flex-col items-center">
                     <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[10px] font-black">✓</span>
@@ -468,9 +450,8 @@ export const ClientPortal = () => {
                   </div>
 
                   <div className="flex flex-col items-center">
-                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${
-                      isApproved ? 'bg-emerald-500 text-slate-950' : 'bg-amber-500 text-slate-950 animate-pulse'
-                    }`}>
+                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${isApproved ? 'bg-emerald-500 text-slate-950' : 'bg-amber-500 text-slate-950 animate-pulse'
+                      }`}>
                       {isApproved ? '✓' : '•'}
                     </span>
                     <span className="text-[11px] font-bold text-slate-200 mt-1">3. Auditoría</span>
@@ -478,9 +459,8 @@ export const ClientPortal = () => {
                   </div>
 
                   <div className="flex flex-col items-center">
-                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${
-                      isApproved ? 'bg-emerald-500 text-slate-950 shadow-[0_0_8px_#10b981]' : 'bg-slate-700 text-slate-400'
-                    }`}>
+                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${isApproved ? 'bg-emerald-500 text-slate-950 shadow-[0_0_8px_#10b981]' : 'bg-slate-700 text-slate-400'
+                      }`}>
                       {isApproved ? '✓' : '4'}
                     </span>
                     <span className="text-[11px] font-bold text-slate-200 mt-1">4. Acta Convenio</span>
@@ -492,8 +472,8 @@ export const ClientPortal = () => {
 
             {/* Dense 3-Column Information Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
-              
-              {/* Column 1: Ficha Técnica del Titular (General Specs Table) */}
+
+              {/* Column 1: Ficha Técnica del Titular */}
               <div className="lg:col-span-5 bg-[#0b1622]/90 border border-slate-700/60 rounded-xl p-3.5 sm:p-4 shadow-sm backdrop-blur-md flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
@@ -503,7 +483,6 @@ export const ClientPortal = () => {
                     <User className="w-3.5 h-3.5 text-slate-400" />
                   </div>
 
-                  {/* Dense Key-Value Rows */}
                   <div className="divide-y divide-slate-800/60 text-xs">
                     <div className="py-2 flex items-center justify-between">
                       <span className="text-slate-400 text-[11px]">Nombre Legal:</span>
@@ -571,7 +550,7 @@ export const ClientPortal = () => {
                 </div>
               </div>
 
-              {/* Column 2: Cédula de Identidad Digitalizada (Vessel Photo Style) */}
+              {/* Column 2: Cédula de Identidad Digitalizada */}
               <div className="lg:col-span-4 bg-[#0b1622]/90 border border-slate-700/60 rounded-xl p-3.5 sm:p-4 shadow-sm backdrop-blur-md flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
@@ -581,16 +560,14 @@ export const ClientPortal = () => {
                     <CreditCard className="w-3.5 h-3.5 text-slate-400" />
                   </div>
 
-                  {/* Photo Preview Container */}
                   <div className="relative w-full h-44 bg-slate-950/80 rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center group">
                     <DocumentImage
                       src={currentUser.idPhotoUrl}
                       alt={currentUser.fullName}
-                      fill
-                      className="object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+                      objectFit="contain"
+                      showLoadingSpinner={false}
                     />
 
-                    {/* Overlay Action Buttons */}
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <button
                         type="button"
@@ -615,7 +592,6 @@ export const ClientPortal = () => {
                     </div>
                   </div>
 
-                  {/* Sub-table below photo */}
                   <div className="divide-y divide-slate-800/60 text-xs mt-3">
                     <div className="py-1.5 flex items-center justify-between">
                       <span className="text-slate-400 text-[11px]">Tipo de Documento:</span>
@@ -649,14 +625,12 @@ export const ClientPortal = () => {
                   </div>
 
                   <div className="space-y-2.5">
-                    {/* Status Box */}
-                    <div className={`p-2.5 rounded-lg border text-xs ${
-                      isApproved
+                    <div className={`p-2.5 rounded-lg border text-xs ${isApproved
                         ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
                         : isPending
-                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                        : 'bg-red-500/10 border-red-500/30 text-red-300'
-                    }`}>
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                          : 'bg-red-500/10 border-red-500/30 text-red-300'
+                      }`}>
                       <div className="font-bold flex items-center gap-1.5">
                         {isApproved ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                         <span>{isApproved ? 'Expediente Verificado' : 'Revisión en Proceso'}</span>
@@ -668,7 +642,6 @@ export const ClientPortal = () => {
                       </p>
                     </div>
 
-                    {/* Notes if available */}
                     {currentUser.notes && (
                       <div className="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800 text-[11px] text-slate-300">
                         <strong className="block text-slate-400 uppercase text-[10px]">Nota de Auditoría:</strong>
@@ -676,7 +649,6 @@ export const ClientPortal = () => {
                       </div>
                     )}
 
-                    {/* Quick Ticket Summary */}
                     <div className="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800 text-xs">
                       <div className="flex justify-between items-center text-slate-400 text-[11px] mb-1">
                         <span>Tickets de Soporte:</span>
@@ -739,8 +711,7 @@ export const ClientPortal = () => {
               <DocumentImage
                 src={currentUser.idPhotoUrl}
                 alt={currentUser.fullName}
-                fill
-                className="object-contain"
+                objectFit="contain"
               />
             </div>
           </div>
@@ -808,7 +779,7 @@ export const ClientPortal = () => {
 
             {myTickets.length === 0 ? (
               <div className="text-center py-10 text-slate-500 text-xs">
-                No tienes tickets abiertos. Si requieres asistencia o corregir tus datos, haz clic en "Nuevo Ticket".
+                No tienes tickets abiertos. Si requieres asistencia o corregir tus datos, haz clic en &quot;Nuevo Ticket&quot;.
               </div>
             ) : (
               <div className="space-y-3">
@@ -825,22 +796,21 @@ export const ClientPortal = () => {
                         <span className="px-2 py-0.5 rounded font-bold bg-slate-800 text-slate-300">
                           {t.category}
                         </span>
-                        <span className={`px-2 py-0.5 rounded font-bold ${
-                          t.status === 'Resuelto'
+                        <span className={`px-2 py-0.5 rounded font-bold ${t.status === 'Resuelto'
                             ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                             : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                        }`}>
+                          }`}>
                           {t.status}
                         </span>
                       </div>
                     </div>
                     <p className="text-slate-300 text-xs leading-relaxed">{t.message}</p>
-                    {t.reply && (
+                    {t.adminReply && (
                       <div className="mt-2 p-2.5 bg-emerald-950/40 border border-emerald-800/40 rounded-lg text-emerald-200">
                         <strong className="block text-[10px] text-emerald-400 uppercase font-black mb-0.5">
                           Respuesta de Administración:
                         </strong>
-                        {t.reply}
+                        {t.adminReply}
                       </div>
                     )}
                   </div>
@@ -878,8 +848,7 @@ export const ClientPortal = () => {
               <DocumentImage
                 src={selectedPhotoModal}
                 alt="Documento en alta resolución"
-                fill
-                className="object-contain"
+                objectFit="contain"
               />
             </div>
           </div>
@@ -932,13 +901,13 @@ export const ClientPortal = () => {
                   </label>
                   <select
                     value={ticketCategory}
-                    onChange={(e) => setTicketCategory(e.target.value as any)}
+                    onChange={(e) => setTicketCategory(e.target.value as SupportTicket['category'])}
                     className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-[#d9251d]"
                   >
                     <option value="Técnico">Soporte Técnico</option>
-                    <option value="Validación">Validación de Datos</option>
-                    <option value="Corrección de Cédula">Corrección de Cédula</option>
-                    <option value="Pago / Lote">Consulta de Nómina</option>
+                    <option value="Documentación">Documentación</option>
+                    <option value="Operaciones">Operaciones</option>
+                    <option value="Facturación">Facturación</option>
                     <option value="Otro">Otro Asunto</option>
                   </select>
                 </div>
@@ -949,7 +918,7 @@ export const ClientPortal = () => {
                   </label>
                   <select
                     value={ticketPriority}
-                    onChange={(e) => setTicketPriority(e.target.value as any)}
+                    onChange={(e) => setTicketPriority(e.target.value as SupportTicket['priority'])}
                     className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-[#d9251d]"
                   >
                     <option value="Baja">Baja</option>

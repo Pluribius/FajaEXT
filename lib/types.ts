@@ -177,6 +177,18 @@ export function getUserUID(u: { id?: string; idNumber?: string; email?: string; 
   return `REF-AUD-${positive}`;
 }
 
+export type TicketNodeType = 'start' | 'middle' | 'end';
+
+export interface TicketNode {
+  node_id: string;
+  parent_node_id: string | null;
+  type: TicketNodeType;
+  author: string;
+  date: string;
+  issueType?: SupportTicket['category'];
+  body: string;
+}
+
 export interface SupportTicket {
   id: string;
   userId: string;
@@ -190,7 +202,14 @@ export interface SupportTicket {
   createdAt: string;
   adminReply?: string;
   repliedAt?: string;
+  nodes?: TicketNode[];
+  forkedFrom?: {
+    ticketId: string;
+    nodeId: string;
+  };
 }
+
+export type NewsScope = 'anonymous' | 'users' | 'viewers' | 'admins';
 
 export interface NewsPost {
   id: string;
@@ -202,5 +221,9 @@ export interface NewsPost {
   imageUrl?: string;
   author: string;
   important?: boolean;
+  status?: 'active' | 'inactive';
+  scopes?: NewsScope[];
+  showAuthor?: boolean;
+  sendEmail?: boolean;
 }
 

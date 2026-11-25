@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ui/layout/ThemeProvider";
 import { AppProvider } from "@/components/auth/AppContext";
-import { IndustrialHeader } from "@/components/ui/layout/header/IndustrialHeader";
+import { IndustrialHeader } from "@/components/ui/layout/Header/IndustrialHeader";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { EmailConfirmationModal } from "@/components/modals/EmailConfirmationModal";
 
