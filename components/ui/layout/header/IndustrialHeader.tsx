@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/components/auth/AppContext';
-import { HeaderLogo } from './HeaderLogo';
-import { HeaderNav } from './HeaderNav';
-import { HeaderActions } from './HeaderActions';
+import { HeaderLogo } from '@/components/ui/layout/Header/HeaderLogo';
+import { HeaderNav } from '@/components/ui/layout/Header/HeaderNav';
+import { HeaderActions } from '@/components/ui/layout/Header/HeaderActions';
 
 export const IndustrialHeader = () => {
   const {
@@ -46,11 +46,8 @@ export const IndustrialHeader = () => {
 
         <HeaderActions
           currentUser={currentUser}
-          activeView={activeView}
-          setActiveView={setActiveView}
           logout={logout}
           openAuthModal={openAuthModal}
-          scrolled={scrolled}
         />
       </div>
     </header>

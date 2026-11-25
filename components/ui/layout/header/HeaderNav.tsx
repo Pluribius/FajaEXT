@@ -10,7 +10,7 @@ import {
     getAdminNavItems,
     isLandingRoute,
     type NavItemConfig,
-} from './HeaderConfig';
+} from '@/components/ui/layout/Header/HeaderConfig';
 
 interface HeaderNavProps {
     scrolled: boolean;
