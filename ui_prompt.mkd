@@ -1,0 +1,74 @@
+<role>
+You are a Senior Frontend & UI/UX Engineer executing a non-destructive visual polish and mobile responsiveness pass on the FAJAEXT Admin Export View (`localhost:3000/export` or corresponding export route/component).
+Constraints:
+- Preserve existing layout structure on desktop, navigation routes, domain labels (Spanish copy), filter states, and all data-fetching/export logic (CSV, Excel, Imprimir, Mosaico).
+- Only modify styling, spacing, layout classes, responsive breakpoints, and shared UI presentation tokens.
+- Enforce an 8px spacing scale, consistent border radii, icon-to-text gaps, tabular numerals, and zero horizontal viewport overflow across mobile, tablet, and desktop.
+</role>
+
+<context>
+  <doc id="visual_standard_specification">
+    1. Color & Surface Tokens:
+       - Page Canvas: Light neutral (#F8FAFC / #F9FAFB).
+       - Elevated Card Surface: White (#FFFFFF) with subtle border (#E2E8F0 / #E5E7EB).
+       - Top Nav Bar: White (#FFFFFF) with bottom hairline border; coral/orange brand accent (#F97316 / #EA580C) on FAJAEXT mark, active "Exportar" nav state, and "Tickets" badge ("2").
+       - Floating Control Bar & Table Header: Deep navy/indigo (#090A2A to #0F172A) with rounded corners (12px–16px) on the control bar and uppercase light text on table headers.
+       - Active Filter Pills: Electric/royal blue (#2563EB / #3B82F6) for selected toggles ("Visibles (404)", "Aprobados (404)").
+       - Positive Status Pill: Soft mint/green background with dark green text and subtle border ("aprobado").
+
+    2. Spacing & Layout Grid (8px Base Unit):
+       - Use 4px, 8px, 12px, 16px, 24px, 32px tokens consistently.
+       - Desktop (>= 1024px): 24px–32px horizontal outer padding aligning the top navbar, dark control bar, and white table card on a shared container axis; 16px–24px vertical gap between major sections.
+       - Tablet (768px–1023px): 20px horizontal outer padding; wrapped toolbars and horizontal-scroll table container.
+       - Mobile (< 768px, tested down to 375px–430px): 12px–16px outer padding; 12px–16px vertical section gaps; minimum 40px–44px tap height on all interactive buttons, pills, and inputs with >= 8px gap between tap targets.
+       - Inline gaps: 6px–8px between icon and text label; 8px–12px between adjacent pills or action buttons.
+
+    3. Typography & Data Formatting:
+       - Consistent geometric/neo-grotesque sans-serif font across all controls and tables.
+       - Table headers: 11px–12px, uppercase, weight 600, letter-spacing 0.05em.
+       - Primary cell text (names, cédulas): 13px–14px, weight 500–600, high-contrast ink.
+       - Secondary metadata (emails, phones, dates, record counter): 12px–13px, muted slate (#64748B / #6B7280).
+       - Apply `tabular-nums` (`font-variant-numeric: tabular-nums`) to cédula IDs, phone numbers, dates (`2026-11-03`), and record counters.
+
+    4. Component & Responsive Specifications:
+       - Top Navigation Bar: Desktop keeps single horizontal row (FAJAEXT + Dashboard, Usuarios, Exportar, Tickets [2], Noticias on left; "VER PÁGINA PRINCIPAL" outline CTA + "Rafael Eduardo Ramis / ADMINISTRADOR" + logout icon on right) with `whitespace-nowrap`. Mobile (< 768px) collapses secondary links and CTA into a clean responsive drawer/hamburger menu inside a compact 56px–64px top bar without clipping.
+       - Dark Filter & Export Bar: Desktop keeps ALCANCE and ESTADO pill groups left and Mosaico, CSV, Excel, Imprimir right at uniform 32px–36px height. Mobile (< 768px) stacks filter groups and action buttons with 12px gaps, wraps or horizontally scrolls pill rows cleanly (`overflow-x-auto`), and arranges export buttons in a 2x2 grid or clean wrap at >= 40px tap height.
+       - Search & Counter Row: Inside top of white card (16px–20px padding). Desktop shows left search input (`~320px–380px` width, placeholder "Filtrar por nombre, cédula, UID, correo...") vertically centered with right-aligned summary ("Mostrando 404 de 404 usuarios autorizados (ordenados por cédula)"). Mobile (< 768px) stacks vertically (8px gap) with 100% width search input (>= 42px height) and 12px summary caption below.
+       - Data Table, Thumbnails & Mobile Cards:
+         * Desktop (>= 1024px): Uniform row padding (14px–18px vertical, 16px horizontal) and 1px #E5E7EB dividers. ID thumbnails (`DOCUMENTO (CÉDULA)`) render inside a fixed-dimension container with 4px–6px radius and `object-cover`. Status badges (`ESTATUS`) use `rounded-full` (9999px), 24px–28px height, and 10px–12px horizontal padding.
+         * Tablet (768px–1023px): Wrap table in `overflow-x-auto` so columns never crush or overflow the page.
+         * Mobile (< 768px): Render stacked record cards (or honor the existing Mosaico card layout) displaying full name + `aprobado` badge in the card header, alongside structured rows for Cédula oficial, Documento thumbnail, Correo electrónico, Teléfono, and Fecha verificación.
+  </doc>
+</context>
+
+<instructions>
+1. Locate the export page component, layout wrapper, navigation bar, filter/export toolbar, and user table/card components in the codebase.
+2. Audit existing CSS/Tailwind classes and replace ad-hoc margins, paddings, heights, and border radii with the standardized 8px grid and component tokens defined in <context>.
+3. Implement the responsive layout rules for Mobile (< 768px), Tablet (768px–1023px), and Desktop (>= 1024px), including mobile navigation collapsing, stacked filter/export controls, full-width search bar, and mobile card/scroll table adaptation.
+4. Enforce `tabular-nums` on numeric/date fields and fixed-ratio `object-cover` framing on `DOCUMENTO (CÉDULA)` thumbnails.
+5. Verify against the concrete rules in <examples> that no business logic, event handlers, API calls, or Spanish domain labels were modified.
+6. Self-critique the modified code and rendered layout across 375px, 768px, and 1440px viewports; fix any overflow, misalignment, or cramped tap targets (< 40px on mobile) before concluding.
+7. Output a concise summary of modified files and applied changes inside <answer> following <format>.
+</instructions>
+
+<examples>
+  <example>
+    <input>Dark control bar buttons and filter pills have uneven heights and overflow horizontally on a 375px phone screen.</input>
+    <output>Standardize all desktop pills/buttons to 32px–36px height with 8px–12px gaps. On `< 768px`, stack filter groups above export buttons (`gap: 12px`), enable clean pill wrapping or `overflow-x-auto`, and render `Mosaico`, `CSV`, `Excel`, and `Imprimir` in a 2-column grid with `min-h-[40px]` tap targets.</output>
+  </example>
+  <example>
+    <input>Table rows shift vertically because uploaded cédula images have inconsistent aspect ratios.</input>
+    <output>Wrap each `DOCUMENTO (CÉDULA)` image in a fixed-size container (e.g., `w-16 h-10 rounded-[4px] overflow-hidden`) with `w-full h-full object-cover` so every row maintains uniform vertical height.</output>
+  </example>
+  <example>
+    <input>7-column table forces horizontal page scrolling on mobile devices.</input>
+    <output>Hide the wide desktop table below `md` (`< 768px`) and display stacked record cards containing the user's full name, `aprobado` pill, cédula thumbnail, and labeled metadata rows (`Cédula`, `Correo`, `Teléfono`, `Verificación`) with `tabular-nums`.</output>
+  </example>
+</examples>
+
+<format>
+Provide your final report inside <answer>...</answer> with:
+1. Modified Files (list of touched component/style files)
+2. Applied Standardization & Mobile Responsive Updates (grouped by section: Navbar, Control Bar, Search & Counter, Table/Mobile Cards)
+3. Verification Notes (confirming 375px/768px/1440px layout integrity and untouched business logic)
+</format>
