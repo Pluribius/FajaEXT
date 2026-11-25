@@ -9,7 +9,7 @@ import {
     getRoleHomeLabel,
     getRoleHomeRoute,
     isLandingRoute,
-} from '@/components/ui/layout/Header/HeaderConfig';
+} from './HeaderConfig';
 
 interface HeaderActionsProps {
     currentUser: AppUser | null;
